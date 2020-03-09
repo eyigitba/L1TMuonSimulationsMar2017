@@ -54,7 +54,7 @@ BaseFlatGunProducer2::BaseFlatGunProducer2( const ParameterSet& pset ) :
   //
   //fPDGTablePath = "/afs/cern.ch/sw/lcg/external/clhep/1.9.2.1/slc3_ia32_gcc323/data/HepPDT/" ;
 /*
-  string HepPDTBase( getenv("HEPPDT_PARAM_PATH") ) ; 
+  string HepPDTBase( std::getenv("HEPPDT_PARAM_PATH") ) ; 
   fPDGTablePath = HepPDTBase + "/data/" ;
   fPDGTableName = "PDG_mass_width_2004.mc"; // should it be 2004 table ?
 

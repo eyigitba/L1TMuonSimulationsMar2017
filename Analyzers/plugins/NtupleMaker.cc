@@ -693,10 +693,10 @@ void NtupleMaker::process(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
     vt_pt         ->push_back(trk.Pt());
     vt_xml_pt     ->push_back(trk.Pt_XML());
-    vt_pt_dxy     ->push_back(trk.Pt_dxy());
-    vt_dxy        ->push_back(trk.Dxy());
-    vt_invpt_prompt ->push_back(trk.Invpt_prompt());
-    vt_invpt_displ  ->push_back(trk.Invpt_displ());
+    //vt_pt_dxy     ->push_back(trk.Pt_dxy());          //FIXME
+    //vt_dxy        ->push_back(trk.Dxy());             //FIXME
+    //vt_invpt_prompt ->push_back(trk.Invpt_prompt());  //FIXME
+    //vt_invpt_displ  ->push_back(trk.Invpt_displ());   //FIXME
     vt_phi        ->push_back(trk.Phi_glob());
     vt_theta      ->push_back(trk.Theta());
     vt_eta        ->push_back(trk.Eta());

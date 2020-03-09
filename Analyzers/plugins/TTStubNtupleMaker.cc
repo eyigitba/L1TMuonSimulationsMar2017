@@ -41,7 +41,7 @@
 #include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
 #include "Geometry/CommonTopologies/interface/PixelTopology.h"
-#include "Geometry/TrackerGeometryBuilder/interface/PixelGeomDetUnit.h"
+#include "Geometry/CommonDetUnit/interface/PixelGeomDetUnit.h"
 #include "Geometry/TrackerGeometryBuilder/interface/StripGeomDetUnit.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
 #include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
@@ -141,7 +141,6 @@ private:
   std::unique_ptr<std::vector<float> >    vh_coordx;  // float, in full-strip unit
   std::unique_ptr<std::vector<float> >    vh_coordy;  // float
   std::unique_ptr<std::vector<float> >    vh_bend;    // float
-  std::unique_ptr<std::vector<int16_t> >  vh_fr;
   //
   std::unique_ptr<std::vector<float  > >  vh_sim_phi;
   std::unique_ptr<std::vector<float  > >  vh_sim_theta;
@@ -378,12 +377,12 @@ void TTStubNtupleMaker::process(const edm::Event& iEvent, const edm::EventSetup&
         const Phase2TrackerGeomDetUnit* pixUnit = dynamic_cast<const Phase2TrackerGeomDetUnit*>(geoUnit);
         const Phase2TrackerTopology* pixTopo = dynamic_cast<const Phase2TrackerTopology*>(&(pixUnit->specificTopology()));
 
-        const MeasurementPoint& localCoord = ttstub.getClusterRef(0)->findAverageLocalCoordinatesCentered();
-        //const MeasurementPoint& localCoord = aTTStub.getClusterRef(0)->findAverageLocalCoordinates();
+        const MeasurementPoint& localCoord = ttstub.clusterRef(0)->findAverageLocalCoordinatesCentered();
+        //const MeasurementPoint& localCoord = aTTStub.clusterRef(0)->findAverageLocalCoordinates();
         const GlobalPoint globalPosition = pixUnit->surface().toGlobal(pixTopo->localPosition(localCoord));
 
-        double bend   = ttstub.getTriggerBend();  // in full-strip unit
-        //double bend   = ttstub.getHardwareBend();  // in full-strip unit
+        double bend   = ttstub.bendFE();  // in full-strip unit
+        //double bend   = ttstub.bendBE();  // in full-strip unit
 
         int sim_tp    = -1;
         int sim_pdgid = 0;
@@ -419,7 +418,6 @@ void TTStubNtupleMaker::process(const edm::Event& iEvent, const edm::EventSetup&
         vh_coordx   ->push_back(localCoord.x());
         vh_coordy   ->push_back(localCoord.y());
         vh_bend     ->push_back(bend);
-        vh_fr       ->push_back(0);  //FIXME
 
         vh_sim_phi  ->push_back(rad_to_deg(globalPosition.phi()));
         vh_sim_theta->push_back(globalPosition.theta());
@@ -448,7 +446,6 @@ void TTStubNtupleMaker::process(const edm::Event& iEvent, const edm::EventSetup&
   vh_coordx     ->clear();
   vh_coordy     ->clear();
   vh_bend       ->clear();
-  vh_fr         ->clear();
   //
   vh_sim_phi    ->clear();
   vh_sim_theta  ->clear();
@@ -492,7 +489,6 @@ void TTStubNtupleMaker::makeTree() {
   vh_coordx     = std::make_unique<std::vector<float   > >();
   vh_coordy     = std::make_unique<std::vector<float   > >();
   vh_bend       = std::make_unique<std::vector<float   > >();
-  vh_fr         = std::make_unique<std::vector<int16_t > >();
   //
   vh_sim_phi    = std::make_unique<std::vector<float   > >();
   vh_sim_theta  = std::make_unique<std::vector<float   > >();
@@ -517,7 +513,6 @@ void TTStubNtupleMaker::makeTree() {
   tree->Branch("vh_coordx"    , &(*vh_coordx    ));
   tree->Branch("vh_coordy"    , &(*vh_coordy    ));
   tree->Branch("vh_bend"      , &(*vh_bend      ));
-  tree->Branch("vh_fr"        , &(*vh_fr        ));
   //
   tree->Branch("vh_sim_phi"   , &(*vh_sim_phi   ));
   tree->Branch("vh_sim_theta" , &(*vh_sim_theta ));
