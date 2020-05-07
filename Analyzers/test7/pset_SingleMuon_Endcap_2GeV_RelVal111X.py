@@ -165,6 +165,13 @@ if True:
     process.schedule = cms.Schedule(process.generation_step,process.genfiltersummary_step,process.simulation_step,process.digitisation_step,process.L1simulation_step, process.ntuple_step)
 
 
+## Modify global tags
+#process.simEmtfDigis.verbosity = 1
+#process.load('L1Trigger.L1TMuonEndCap.fakeEmtfParams_2018_MC_cff')
+#process.es_prefer_fakeEmtfParams0 = cms.ESPrefer("PoolDBESSource","emtfParamsSource")
+#process.es_prefer_fakeEmtfParams1 = cms.ESPrefer("PoolDBESSource","emtfForestsDB")
+
+
 # ______________________________________________________________________________
 # Configure framework report and summary
 process.options.wantSummary = cms.untracked.bool(True)
