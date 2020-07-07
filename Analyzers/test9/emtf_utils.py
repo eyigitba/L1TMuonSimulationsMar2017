@@ -117,7 +117,11 @@ def calc_eta_from_theta_deg(theta_deg, endcap):
     eta = -eta
   return eta
 
-def calc_simple_d0(phi, xv, yv):
+def calc_endsec(endcap, sector):
+  endsec = (sector - 1) if endcap == 1 else (sector - 1 + 6)
+  return endsec
+
+def calc_d0_simple(phi, xv, yv):
   d0 = xv * np.sin(phi) - yv * np.cos(phi)
   return d0
 
@@ -128,40 +132,51 @@ def calc_d0(invpt, phi, xv, yv, B=3.811):
   d0 = R - (np.sign(R) * np.hypot(xc, yc))  # d0 = R - sign(R) * sqrt(xc^2 + yc^2)
   return d0
 
-def calc_etastar_from_eta(eta, phi, x0, y0, z0):
-  # Propagate to station 2 (z = 850 cm)
+def calc_etastar_from_eta(invpt, eta, phi, x0, y0, z0, zstar=850., zstar_4T=650.):
+  # Propagate to station 2 (z = 850 cm), find r and eta of the track
+  # (called rstar and etastar).
   # Note: x0, y0, z0 in cm. Assume pT -> inf.
-  zstar = 850.
   if eta < 0:
     zstar *= -1
-  cot = np.sinh(eta)
-  delta_r = np.abs((zstar - z0)/cot)
-  xstar = x0 + np.cos(phi) * delta_r
-  ystar = y0 + np.sin(phi) * delta_r
+  # Assume a simplified magnetic field where it is 4T (or 3.811T)
+  # inside the solenoid and 0T outside (boundary at z = 650 cm)
+  if eta < 0:
+    zstar_4T *= -1
+  B = 3.811
+  R = -1.0 / (0.003 * B * invpt)  # R = -pT/(0.003 q B)  [cm], radius of the circle
+  cot = np.sinh(eta)              # cot(theta), which is pz/pt
+  if np.abs(zstar_4T) < np.abs(zstar):
+    arg_term_4T = np.abs((zstar_4T - z0)/cot)                 # with magfield
+    sin_term_4T = (2 * R) * np.sin(arg_term_4T/(2 * R))       # with magfield
+    cos_term_4T = (2 * R) * (1 - np.cos(arg_term_4T/(2 * R))) # with magfield
+    arg_term_0T = np.abs((zstar - zstar_4T)/cot)              # without magfield
+    sin_term_0T = arg_term_0T                                 # without magfield
+    cos_term_0T = 0                                           # without magfield
+  else:
+    # Also need to check for the boundary at r where 4T -> 0T, ignore for now
+    arg_term_4T = np.abs((zstar - z0)/cot)                    # with magfield
+    sin_term_4T = (2 * R) * np.sin(arg_term_4T/(2 * R))       # with magfield
+    cos_term_4T = (2 * R) * (1 - np.cos(arg_term_4T/(2 * R))) # with magfield
+    arg_term_0T = 0                                           # without magfield
+    sin_term_0T = 0                                           # without magfield
+    cos_term_0T = 0                                           # without magfield
+  phistar_4T = phi + arg_term_4T/(2 * R)  # phi at the boundary where 4T -> 0T
+  xstar = x0 + np.cos(phi) * sin_term_4T - np.sin(phi) * cos_term_4T + \
+          np.cos(phistar_4T) * sin_term_0T - np.sin(phistar_4T) * cos_term_0T
+  ystar = y0 + np.sin(phi) * sin_term_4T + np.cos(phi) * cos_term_4T + \
+          np.sin(phistar_4T) * sin_term_0T + np.cos(phistar_4T) * cos_term_0T
   rstar = np.hypot(xstar, ystar)
   cotstar = zstar/rstar
   etastar = np.arcsinh(cotstar)
   return etastar
 
-def calc_signed_rvtx(eta, phi, x0, y0, z0):
-  # Propagate to station 2 (z = 850 cm)
-  # Note: x0, y0, z0 in cm. Assume pT -> inf.
-  zstar = 850.
-  if eta < 0:
-    zstar *= -1
-  cot = np.sinh(eta)
-  delta_r = np.abs((zstar - z0)/cot)
-  xstar = x0 + np.cos(phi) * delta_r
-  ystar = y0 + np.sin(phi) * delta_r
-  rstar = np.hypot(xstar, ystar)
+def calc_signed_rvtx(invpt, eta, phi, x0, y0, z0, zstar=850., zstar_4T=650.):
+  # Sign is positive if |etastar| <= |eta|, negative otherwise
+  etastar = calc_etastar_from_eta(invpt, eta, phi, x0, y0, z0, zstar, zstar_4T)
   rvtx = np.hypot(x0, y0)
-  if (rstar - delta_r) <= 0.:
+  if not (np.abs(etastar) <= np.abs(eta)):
     rvtx *= -1
   return rvtx
-
-def find_endsec(endcap, sector):
-  endsec = (sector - 1) if endcap == 1 else (sector - 1 + 6)
-  return endsec
 
 def pick_the_median(lst):  # assume sorted list
   middle = 0 if len(lst) == 0 else (len(lst)-1)//2
