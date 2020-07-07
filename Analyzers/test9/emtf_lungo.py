@@ -26,7 +26,6 @@ class DummyAnalysis(_BaseAnalysis):
   def run(self, algo):
     # Load tree
     tree = load_pgun_test()
-    verbosity = 1
 
     # Loop over events
     for ievt, evt in enumerate(tree):
@@ -50,7 +49,7 @@ class DummyAnalysis(_BaseAnalysis):
       # Trigger primitives
       if verbosity >= kINFO:
         for ihit, hit in enumerate(evt.hits):
-          hit_id = (hit.type, hit.station, hit.ring, find_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
+          hit_id = (hit.type, hit.station, hit.ring, calc_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
           hit_sim_tp = hit.sim_tp1
           if (hit.type == kCSC) and (hit_sim_tp != hit.sim_tp2):
             hit_sim_tp = -1
@@ -67,14 +66,15 @@ class ZoneAnalysis(_BaseAnalysis):
   """
 
   def run(self, algo, pileup=200):
+    # Overwrite maxevents
+    maxevents = -1
+
     # Overwrite eta bins
     eta_bins = (0.8, 1.2, 1.55, 1.98, 2.5)
-    eta_bins = eta_bins[::-1]
 
-    def find_eta_bin(eta):
-      ieta = np.digitize((np.abs(eta),), eta_bins[1:])[0]  # skip lowest edge
-      ieta = np.clip(ieta, 0, len(eta_bins)-2)
-      return ieta
+    def find_particle_zone_quick(eta):
+      ind = np.searchsorted(eta_bins, np.abs(eta))
+      return (len(eta_bins)-1) - ind  # ind = (1,2,3,4) -> zone (3,2,1,0)
 
     nzones = len(eta_bins) - 1
     out = {}  # dict of dict
@@ -84,7 +84,6 @@ class ZoneAnalysis(_BaseAnalysis):
     # __________________________________________________________________________
     # Load tree
     tree = load_pgun_batch(jobid)
-    verbosity = 1
 
     # Loop over events
     for ievt, evt in enumerate(tree):
@@ -96,7 +95,7 @@ class ZoneAnalysis(_BaseAnalysis):
       if not (part.pt > 4):
         continue
 
-      zone = find_eta_bin(part.eta)
+      zone = find_particle_zone_quick(part.eta)
 
       # Trigger primitives
       for ihit, hit in enumerate(evt.hits):
@@ -112,7 +111,7 @@ class ZoneAnalysis(_BaseAnalysis):
     # Print results
     for zone in range(nzones):
       d = out[zone]
-      keys = sorted(d.keys())
+      keys = sorted(d.keys(), key=lambda x: ((x//10)%10) * 10000 + x)  # reorder
       for k in keys:
         lay = k
         alist = d[lay]
@@ -134,50 +133,71 @@ algo = 'default'  # phase 2
 #algo = 'run3'
 
 # Analysis mode (pick one)
-#analysis = 'dummy'
-analysis = 'zone'
+analysis = 'dummy'
+#analysis = 'zone'
 
 # Job id (pick an integer)
 jobid = 0
 
 # Max num of events (-1 means all events)
-maxevents = -1
+maxevents = 100
+
+# Verbosity
+verbosity = 1
 
 # Condor or not
 # if 'CONDOR_EXEC' is defined, overwrite the 3 arguments (algo, analysis, jobid)
 use_condor = ('CONDOR_EXEC' in os.environ)
 if use_condor:
+  nargs = 3
+  if len(sys.argv) != (nargs + 1):
+    raise RuntimeError('Expect num of arguments: {0}'.format(nargs))
   os.environ['ROOTPY_GRIDMODE'] = 'true'
   algo = sys.argv[1]
   analysis = sys.argv[2]
   jobid = int(sys.argv[3])
   maxevents = -1
+  verbosity = 0
 
-# Main function
-def main():
-  start_time = datetime.datetime.now()
-  print('[INFO] Current time    : {0}'.format(start_time))
-  print('[INFO] Using cmssw     : {0}'.format(os.environ['CMSSW_VERSION']))
-  print('[INFO] Using condor    : {0}'.format(use_condor))
-  print('[INFO] Using algo      : {0}'.format(algo))
-  print('[INFO] Using analysis  : {0}'.format(analysis))
-  print('[INFO] Using jobid     : {0}'.format(jobid))
-  print('[INFO] Using maxevents : {0}'.format(maxevents))
+# Decorator
+def app_decorator(fn):
+  def wrapper(*args, **kwargs):
+    # Begin
+    start_time = datetime.datetime.now()
+    print('[INFO] Current time    : {0}'.format(start_time))
+    print('[INFO] Using cmssw     : {0}'.format(os.environ['CMSSW_VERSION']))
+    print('[INFO] Using condor    : {0}'.format(use_condor))
+    print('[INFO] Using algo      : {0}'.format(algo))
+    print('[INFO] Using analysis  : {0}'.format(analysis))
+    print('[INFO] Using jobid     : {0}'.format(jobid))
+    print('[INFO] Using maxevents : {0}'.format(maxevents))
+    # Run
+    fn(*args, **kwargs)
+    # End
+    stop_time = datetime.datetime.now()
+    print('[INFO] Elapsed time    : {0}'.format(stop_time - start_time))
+    return
+  return wrapper
 
+# App
+@app_decorator
+def app():
+  # Select analysis
   if analysis == 'dummy':
-    anna = DummyAnalysis()
-    anna.run(algo=algo)
+    myapp = DummyAnalysis()
+    myargs = dict(algo=algo)
 
   elif analysis == 'zone':
-    anna = ZoneAnalysis()
-    anna.run(algo=algo)
+    myapp = ZoneAnalysis()
+    myargs = dict(algo=algo)
 
   else:
     raise RuntimeError('Cannot recognize analysis: {0}'.format(analysis))
 
-  # DONE!
-  stop_time = datetime.datetime.now()
-  print('[INFO] Elapsed time    : {0}'.format(stop_time - start_time))
+  # Run analysis
+  myapp.run(**myargs)
+  return
 
+# Finally
 if __name__ == '__main__':
-  main()
+  app()

@@ -17,17 +17,17 @@ class EMTFSectorRanking(object):
     self.sectors = np.zeros(num_emtf_sectors, dtype=np.int32)
 
   def reset(self):
-    self.sectors *= 0
+    self.sectors.fill(0)
 
   def add(self, hit):
-    endsec = find_endsec(hit.endcap, hit.sector)
+    endsec = calc_endsec(hit.endcap, hit.sector)
     hit_lay = find_emtf_layer(hit)
-    a, b, c = hit_lay//100, (hit_lay//10)%10, hit_lay%10  # type, station, ring
+    a, b, c = (hit_lay//100), (hit_lay//10)%10, hit_lay%10  # type, station, ring
 
     rank = np.int32(0)
-    if a == 6:              # a = (6,) b = (0,) -> bit position (11,)
+    if a == 5 and b == 1:   # a = (5,) b = (1,) -> bit position (11,)
       rank |= (1 << (11 + 0))
-    elif a == 5:            # a = (5,) b = (0,) -> bit position (10,)
+    elif a == 5 and b == 0: # a = (5,) b = (0,) -> bit position (10,)
       rank |= (1 << (10 + 0))
     elif a < 5 and b == 0:  # a = (0,1,2,3,4,) b = (0,) -> bit position (9,8,7,6,5,)
       rank |= (1 << (5 + (4 - a)))
@@ -42,7 +42,7 @@ class EMTFSectorRanking(object):
 
 class EMTFZoneArtist(object):
   def __init__(self):
-    num_cols = max_emtf_strip//coarse_emtf_strip
+    num_cols = (max_emtf_strip//coarse_emtf_strip)
     num_rows = 10
     num_zones = 4
     self.zones = np.empty((num_zones, num_rows, num_cols), dtype=np.object)
@@ -246,7 +246,7 @@ class SignalAnalysis(_BaseAnalysis):
 
       # Trigger primitives
       for ihit, hit in enumerate(evt.hits):
-        if is_emtf_legit_hit(hit) and find_endsec(hit.endcap, hit.sector) == best_sector:
+        if is_emtf_legit_hit(hit) and calc_endsec(hit.endcap, hit.sector) == best_sector:
           if min_emtf_strip <= hit.emtf_phi < max_emtf_strip:
             zones.add(hit)
 
@@ -293,7 +293,7 @@ class SignalAnalysis(_BaseAnalysis):
         print('Processing event {0}'.format(ievt))
         print('.. part {0} {1} {2} {3} {4} {5}'.format(0, part.pt, part.eta, part.phi, part.invpt, part.d0))
         for ihit, hit in enumerate(evt.hits):
-          hit_id = (hit.type, hit.station, hit.ring, find_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
+          hit_id = (hit.type, hit.station, hit.ring, calc_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
           hit_sim_tp = hit.sim_tp1
           if (hit.type == kCSC) and (hit_sim_tp != hit.sim_tp2):
             hit_sim_tp = -1
@@ -341,7 +341,7 @@ class BkgndAnalysis(_BaseAnalysis):
     out_aux = []
     out_hits = []
 
-    sector_zones = [EMTFZoneArtist() for i in range(num_emtf_sectors)]
+    sector_zones = [EMTFZoneArtist() for sector in range(num_emtf_sectors)]
 
     # __________________________________________________________________________
     # Load tree
@@ -375,7 +375,7 @@ class BkgndAnalysis(_BaseAnalysis):
       # Trigger primitives
       for sector in range(num_emtf_sectors):
         for ihit, hit in enumerate(evt.hits):
-          if is_emtf_legit_hit(hit) and find_endsec(hit.endcap, hit.sector) == sector:
+          if is_emtf_legit_hit(hit) and calc_endsec(hit.endcap, hit.sector) == sector:
             if min_emtf_strip <= hit.emtf_phi < max_emtf_strip:
               sector_zones[sector].add(hit)
 
@@ -392,7 +392,7 @@ class BkgndAnalysis(_BaseAnalysis):
       if verbosity >= kINFO:
         print('Processing event {0}'.format(ievt))
         for ihit, hit in enumerate(evt.hits):
-          hit_id = (hit.type, hit.station, hit.ring, find_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
+          hit_id = (hit.type, hit.station, hit.ring, calc_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
           hit_sim_tp = hit.sim_tp1
           if (hit.type == kCSC) and (hit_sim_tp != hit.sim_tp2):
             hit_sim_tp = -1
@@ -421,26 +421,6 @@ class BkgndAnalysis(_BaseAnalysis):
     save_np_arrays(outfile, out_dict)
     return
 
-# ______________________________________________________________________________
-class EffieAnalysis(_BaseAnalysis):
-  """Prepare muon+200PU data used for evaluating efficiency.
-
-  Description.
-  """
-
-  def run(self, algo):
-    return
-
-# ______________________________________________________________________________
-class RatesAnalysis(_BaseAnalysis):
-  """Prepare neutrino+200PU data used for evaluating trigger rates.
-
-  Description.
-  """
-
-  def run(self, algo):
-    return
-
 
 # ______________________________________________________________________________
 # Main
@@ -454,8 +434,6 @@ algo = 'default'  # phase 2
 # Analysis mode (pick one)
 analysis = 'signal'
 #analysis = 'bkgnd'
-#analysis = 'effie'
-#analysis = 'rates'
 
 # Job id (pick an integer)
 jobid = 0
@@ -470,6 +448,9 @@ verbosity = 1
 # if 'CONDOR_EXEC' is defined, overwrite the 3 arguments (algo, analysis, jobid)
 use_condor = ('CONDOR_EXEC' in os.environ)
 if use_condor:
+  nargs = 3
+  if len(sys.argv) != (nargs + 1):
+    raise RuntimeError('Expect num of arguments: {0}'.format(nargs))
   os.environ['ROOTPY_GRIDMODE'] = 'true'
   algo = sys.argv[1]
   analysis = sys.argv[2]
@@ -477,39 +458,45 @@ if use_condor:
   maxevents = -1
   verbosity = 0
 
-# Main function
-def main():
-  start_time = datetime.datetime.now()
-  print('[INFO] Current time    : {0}'.format(start_time))
-  print('[INFO] Using cmssw     : {0}'.format(os.environ['CMSSW_VERSION']))
-  print('[INFO] Using condor    : {0}'.format(use_condor))
-  print('[INFO] Using algo      : {0}'.format(algo))
-  print('[INFO] Using analysis  : {0}'.format(analysis))
-  print('[INFO] Using jobid     : {0}'.format(jobid))
-  print('[INFO] Using maxevents : {0}'.format(maxevents))
+# Decorator
+def app_decorator(fn):
+  def wrapper(*args, **kwargs):
+    # Begin
+    start_time = datetime.datetime.now()
+    print('[INFO] Current time    : {0}'.format(start_time))
+    print('[INFO] Using cmssw     : {0}'.format(os.environ['CMSSW_VERSION']))
+    print('[INFO] Using condor    : {0}'.format(use_condor))
+    print('[INFO] Using algo      : {0}'.format(algo))
+    print('[INFO] Using analysis  : {0}'.format(analysis))
+    print('[INFO] Using jobid     : {0}'.format(jobid))
+    print('[INFO] Using maxevents : {0}'.format(maxevents))
+    # Run
+    fn(*args, **kwargs)
+    # End
+    stop_time = datetime.datetime.now()
+    print('[INFO] Elapsed time    : {0}'.format(stop_time - start_time))
+    return
+  return wrapper
 
+# App
+@app_decorator
+def app():
+  # Select analysis
   if analysis == 'signal':
-    anna = SignalAnalysis()
-    anna.run(algo=algo)
+    myapp = SignalAnalysis()
+    myargs = dict(algo=algo)
 
   elif analysis == 'bkgnd':
-    anna = BkgndAnalysis()
-    anna.run(algo=algo)
-
-  elif analysis == 'effie':
-    anna = EffieAnalysis()
-    anna.run(algo=algo)
-
-  elif analysis == 'rates':
-    anna = RatesAnalysis()
-    anna.run(algo=algo)
+    myapp = BkgndAnalysis()
+    myargs = dict(algo=algo)
 
   else:
     raise RuntimeError('Cannot recognize analysis: {0}'.format(analysis))
 
-  # DONE!
-  stop_time = datetime.datetime.now()
-  print('[INFO] Elapsed time    : {0}'.format(stop_time - start_time))
+  # Run analysis
+  myapp.run(**myargs)
+  return
 
+# Finally
 if __name__ == '__main__':
-  main()
+  app()
