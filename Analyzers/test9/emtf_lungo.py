@@ -99,7 +99,7 @@ class ZoneAnalysis(_BaseAnalysis):
 
       # Trigger primitives
       for ihit, hit in enumerate(evt.hits):
-        lay = find_emtf_layer(hit)
+        lay = find_emtf_layer_Y27(hit)
         d = out[zone]
         if lay not in d:
           d[lay] = []
@@ -111,10 +111,14 @@ class ZoneAnalysis(_BaseAnalysis):
     # Print results
     for zone in range(nzones):
       d = out[zone]
-      keys = sorted(d.keys(), key=lambda x: ((x//10)%10) * 10000 + x)  # reorder
+      keys = sorted(d.keys())
       for k in keys:
         lay = k
         alist = d[lay]
+        # Special case
+        if lay == 0 or lay == 1:
+          if (0 in d) and (1 in d):
+            alist = d[0] + d[1]
         n = len(alist)
         if n > 100:
           p = np.percentile(alist, [1,2,2.5,3], overwrite_input=True)
