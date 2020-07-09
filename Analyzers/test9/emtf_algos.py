@@ -22,8 +22,8 @@ coarse_emtf_strip = 8*2  # 'doublestrip' unit
 
 emtf_eta_bins = (0.8, 1.2, 1.55, 1.98, 2.5)
 
-# Encode EMTF hit layer number (Y16)
-class EMTFLayerY16(object):
+# Encode EMTF hit layer number (Y12)
+class EMTFLayerY12(object):
   def __init__(self):
     default_value = -99
     lut = np.full((5,5,5), default_value, dtype=np.int32)  # (type, station, ring) -> layer
@@ -50,10 +50,6 @@ class EMTFLayerY16(object):
     lut[3,1,1] = 9  # GE1/1
     lut[3,2,1] = 10 # GE2/1
     lut[4,1,1] = 11 # ME0
-    lut[0,1,1] = 12 # MB1
-    lut[0,2,1] = 13 # MB2
-    lut[0,3,1] = 14 # MB3
-    lut[0,4,1] = 15 # MB4
     self.lut = lut
 
   def __call__(self, hit):
@@ -61,38 +57,34 @@ class EMTFLayerY16(object):
     emtf_layer = self.lut[index]
     return emtf_layer
 
-# Encode EMTF hit layer number (Y27)
-class EMTFLayerY27(object):
+# Encode EMTF hit layer number (Y19)
+class EMTFLayerY19(object):
   def __init__(self):
     default_value = -99
     lut = np.full((5,5,5), default_value, dtype=np.int32)  # (type, station, ring) -> layer
     lut[1,1,4] = 0  # ME1/1a
-    lut[1,1,1] = 1  # ME1/1b
-    lut[1,1,2] = 2  # ME1/2
-    lut[1,1,3] = 3  # ME1/3
-    lut[1,2,1] = 4  # ME2/1
-    lut[1,2,2] = 5  # ME2/2
-    lut[1,3,1] = 6  # ME3/1
-    lut[1,3,2] = 7  # ME3/2
-    lut[1,4,1] = 8  # ME4/1
-    lut[1,4,2] = 9  # ME4/2
+    lut[1,1,1] = 0  # ME1/1b
+    lut[1,1,2] = 1  # ME1/2
+    lut[1,1,3] = 2  # ME1/3
+    lut[1,2,1] = 3  # ME2/1
+    lut[1,2,2] = 4  # ME2/2
+    lut[1,3,1] = 5  # ME3/1
+    lut[1,3,2] = 6  # ME3/2
+    lut[1,4,1] = 7  # ME4/1
+    lut[1,4,2] = 8  # ME4/2
+    lut[3,1,1] = 9  # GE1/1
     lut[2,1,2] = 10 # RE1/2
     lut[2,1,3] = 11 # RE1/3
-    lut[2,2,2] = 12 # RE2/2
+    lut[3,2,1] = 12 # GE2/1
+    lut[2,2,2] = 13 # RE2/2
     lut[2,2,3] = 13 # RE2/3
     lut[2,3,1] = 14 # RE3/1
     lut[2,3,2] = 15 # RE3/2
-    lut[2,3,3] = 16 # RE3/3
-    lut[2,4,1] = 17 # RE4/1
-    lut[2,4,2] = 18 # RE4/2
-    lut[2,4,3] = 19 # RE4/3
-    lut[3,1,1] = 20 # GE1/1
-    lut[3,2,1] = 21 # GE2/1
-    lut[4,1,1] = 22 # ME0
-    lut[0,1,1] = 23 # MB1
-    lut[0,2,1] = 24 # MB2
-    lut[0,3,1] = 25 # MB3
-    lut[0,4,1] = 26 # MB4
+    lut[2,3,3] = 15 # RE3/3
+    lut[2,4,1] = 16 # RE4/1
+    lut[2,4,2] = 17 # RE4/2
+    lut[2,4,3] = 17 # RE4/3
+    lut[4,1,1] = 18 # ME0
     self.lut = lut
 
   def __call__(self, hit):
@@ -100,13 +92,14 @@ class EMTFLayerY27(object):
     emtf_layer = self.lut[index]
     return emtf_layer
 
-# Decode EMTF hit layer number (Y16)
-class EMTFLayerInverseY16(object):
+# Decode EMTF hit layer number (Y12)
+class EMTFLayerInverseY12(object):
   def __init__(self):
     lut = [
-      (1,1,1), (1,1,2), (1,2,1), (1,3,1), (1,4,1), (2,1,1), (2,2,1), (2,3,1), (2,4,1),
-      (3,1,1), (3,2,1), (4,1,1), (0,1,1), (0,2,1), (0,3,1), (0,4,1),
+      (1,1,1), (1,1,2), (1,2,1), (1,3,1), (1,4,1), (2,1,1), (2,2,1), (2,3,1),
+      (2,4,1), (3,1,1), (3,2,1), (4,1,1),
     ]
+    assert(len(lut) == 12)
     lut = np.asarray(lut, dtype=np.int32)
     self.lut = lut
 
@@ -114,23 +107,67 @@ class EMTFLayerInverseY16(object):
     (_type, station, ring) = self.lut[value]
     return (_type, station, ring)
 
-# Decode EMTF hit layer number (Y27)
-class EMTFLayerInverseY27(object):
+# Decode EMTF hit layer number (Y19)
+class EMTFLayerInverseY19(object):
   def __init__(self):
     lut = [
-      (1,1,4), (1,1,1), (1,1,2), (1,1,3), (1,2,1), (1,2,2), (1,3,1), (1,3,2), (1,4,1), (1,4,2),
-      (2,1,2), (2,1,3), (2,2,2), (2,2,3), (2,3,1), (2,3,2), (2,3,3), (2,4,1), (2,4,2), (2,4,3),
-      (3,1,1), (3,2,1), (4,1,1), (0,1,1), (0,2,1), (0,3,1), (0,4,1),
+      (1,1,1), (1,1,2), (1,1,3), (1,2,1), (1,2,2), (1,3,1), (1,3,2), (1,4,1), (1,4,2),
+      (3,1,1), (2,1,2), (2,1,3), (3,2,1), (2,2,2), (2,3,1), (2,3,2), (2,4,1), (2,4,2),
+      (4,1,1),
     ]
+    assert(len(lut) == 19)
     lut = np.asarray(lut, dtype=np.int32)
     self.lut = lut
 
   def __call__(self, value):
     (_type, station, ring) = self.lut[value]
     return (_type, station, ring)
+
+# Check whether hit is very legal and very cool
+class EMTFLegitHit(object):
+  def __call__(self, hit):
+    def check_type(hit):
+      is_dt = (hit.type == kDT)
+      return (not is_dt)
+    def check_bx(hit):
+      if hit.type == kCSC:
+        return hit.bx in (-1,0)
+      else:
+        return hit.bx == 0
+    def check_phi(hit):
+      if hit.type == kME0:
+        return hit.emtf_phi > 0
+      else:
+        return True
+    return check_type(hit) and check_bx(hit) and check_phi(hit)
+
+# Check whether hit is very legal and very cool (Run 2)
+class EMTFLegitHitRun2(object):
+  def __call__(self, hit):
+    def check_type(hit):
+      is_csc = (hit.type == kCSC)
+      is_rpc_run2 = (hit.type == kRPC) \
+          and not ((hit.station == 3 or hit.station == 4) and hit.ring == 1) \
+          and not ((hit.station == 1 or hit.station == 2) and hit.ring == 3)
+      return (is_csc or is_rpc_run2)
+    def check_bx(hit):
+      if hit.type == kCSC:
+        return hit.bx in (-1,0)
+      else:
+        return hit.bx == 0
+    def check_phi(hit):
+      if hit.type == kME0:
+        return hit.emtf_phi > 0
+      else:
+        return True
+    return check_type(hit) and check_bx(hit) and check_phi(hit)
+
 
 # Functionalize
-find_emtf_layer = EMTFLayerY16()
-find_emtf_layer_Y27 = EMTFLayerY27()
-decode_emtf_layer = EMTFLayerInverseY16()
-decode_emtf_layer_Y27 = EMTFLayerInverseY27()
+find_emtf_layer = EMTFLayerY12()
+find_emtf_layer_Y19 = EMTFLayerY19()
+decode_emtf_layer = EMTFLayerInverseY12()
+decode_emtf_layer_Y19 = EMTFLayerInverseY19()
+
+is_emtf_legit_hit = EMTFLegitHit()
+is_emtf_legit_hit_run2 = EMTFLegitHitRun2()

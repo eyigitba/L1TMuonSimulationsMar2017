@@ -95,15 +95,17 @@ class ZoneAnalysis(_BaseAnalysis):
       if not (part.pt > 4):
         continue
 
+      # Find particle zone
       zone = find_particle_zone_quick(part.eta)
 
       # Trigger primitives
       for ihit, hit in enumerate(evt.hits):
-        lay = find_emtf_layer_Y27(hit)
-        d = out[zone]
-        if lay not in d:
-          d[lay] = []
-        d[lay].append(hit.emtf_theta)
+        if is_emtf_legit_hit(hit):
+          lay = find_emtf_layer_Y19(hit)
+          d = out[zone]  # dict of list
+          if lay not in d:
+            d[lay] = []
+          d[lay].append(hit.emtf_theta)
 
     # End loop over events
 
@@ -115,10 +117,6 @@ class ZoneAnalysis(_BaseAnalysis):
       for k in keys:
         lay = k
         alist = d[lay]
-        # Special case
-        if lay == 0 or lay == 1:
-          if (0 in d) and (1 in d):
-            alist = d[0] + d[1]
         n = len(alist)
         if n > 100:
           p = np.percentile(alist, [1,2,2.5,3], overwrite_input=True)
