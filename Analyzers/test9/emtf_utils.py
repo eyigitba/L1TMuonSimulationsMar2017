@@ -18,44 +18,44 @@ kDT, kCSC, kRPC, kGEM, kME0 = 0, 1, 2, 3, 4
 kDEBUG, kINFO, kWARNING, kERROR, kFATAL = 0, 1, 2, 3, 4
 
 # Functions
-def wrap_phi_rad(rad):
-  while rad < -np.pi:
-    rad += np.pi*2
-  while rad >= +np.pi:
-    rad -= np.pi*2
-  return rad
 
-def wrap_phi_deg(deg):
-  while deg < -180.:
-    deg += 360.
-  while deg >= +180.:
-    deg -= 360.
-  return deg
+def wrap_phi_rad(x):
+  # returns phi in [-pi,pi] rad
+  twopi = np.pi*2
+  x = x - np.round(x / twopi) * twopi
+  return x
 
-def wrap_theta_rad(rad):
-  rad = np.abs(rad)
-  while rad >= np.pi:
-    rad -= np.pi
-  if rad >= np.pi/2:
-    rad = np.pi - rad
-  return rad
+def wrap_phi_deg(x):
+  # returns phi in [-180.,180] deg
+  twopi = 360.
+  x = x - np.round(x / twopi) * twopi
+  return x
 
-def wrap_theta_deg(deg):
-  deg = np.abs(deg)
-  while deg >= 180.:
-    deg -= 180.
-  if deg >= 180./2:
-    deg = 180. - deg
-  return deg
+def wrap_theta_rad(x):
+  # returns theta in [0,pi/2] rad
+  halfpi = np.pi/2
+  rad = wrap_phi_rad(x)
+  x = np.abs(x)
+  x = np.where(x >= halfpi, np.pi - x, x)
+  return x
 
-def delta_phi(lhs, rhs):  # in radians
-  rad = lhs - rhs
-  rad = wrap_phi_rad(rad)
-  return rad
+def wrap_theta_deg(x):
+  # returns theta in [0,90] deg
+  halfpi = 90.
+  rad = wrap_phi_deg(x)
+  x = np.abs(x)
+  x = np.where(x >= halfpi, 180. - x, x)
+  return x
 
-def delta_theta(lhs, rhs):  # in radians
-  rad = lhs - rhs
-  return rad
+def delta_phi(lhs, rhs):
+  # lhs, rhs in radians
+  x = wrap_phi_rad(lhs - rhs)
+  return x
+
+def delta_theta(lhs, rhs):
+  # lhs, rhs in radians
+  x = lhs - rhs
+  return x
 
 def calc_phi_loc_deg_from_glob(glob, sector):
   # glob in deg, sector [1-6]
@@ -73,6 +73,7 @@ def calc_phi_loc_int(glob, sector):
   return phi_int
 
 def calc_phi_loc_deg(bits):
+  # bits is an integer
   loc = float(bits) / 60. - 22.
   return loc
 
@@ -92,12 +93,12 @@ def calc_theta_int(theta, endcap):
   return theta_int
 
 def calc_theta_rad_from_eta(eta):
-  # returns theta in [0-pi] rad
+  # returns theta in [0,pi] rad
   theta = np.arctan2(1.0, np.sinh(eta))
   return theta
 
 def calc_theta_deg_from_eta(eta):
-  # returns theta in [0-180] deg
+  # returns theta in [0,180] deg
   return np.rad2deg(calc_theta_rad_from_eta(eta))
 
 def calc_theta_deg_from_int(theta_int):
@@ -118,6 +119,7 @@ def calc_eta_from_theta_deg(theta_deg, endcap):
   return eta
 
 def calc_endsec(endcap, sector):
+  # returns endsec [0-11]
   endsec = (sector - 1) if endcap == 1 else (sector - 1 + 6)
   return endsec
 
@@ -483,7 +485,11 @@ def load_tree(infiles):
   from rootpy.ROOT import gROOT
   gROOT.SetBatch(True)
 
-  print('[INFO] Opening files: {0}'.format(infiles))
+  if len(infiles) > 10:
+    infiles_trunc = infiles[:5] + ['...'] + infiles[-5:]
+  else:
+    infiles_trunc = infiles
+  print('[INFO] Opening files: {0}'.format(infiles_trunc))
   tree = TreeChain('ntupler/tree', infiles)
   tree.define_collection(name='hits', prefix='vh_', size='vh_size')
   tree.define_collection(name='simhits', prefix='vc_', size='vc_size')

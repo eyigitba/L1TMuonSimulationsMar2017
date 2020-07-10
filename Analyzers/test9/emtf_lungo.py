@@ -77,9 +77,8 @@ class ZoneAnalysis(_BaseAnalysis):
       return (len(eta_bins)-1) - ind  # ind = (1,2,3,4) -> zone (3,2,1,0)
 
     nzones = len(eta_bins) - 1
-    out = {}  # dict of dict
-    for zone in range(nzones):
-      out[zone] = {}
+    out_hits = []
+    out_hits_metadata = {'type': 0, 'station': 1, 'ring': 2, 'zone': 3, 'emtf_theta': 4}
 
     # __________________________________________________________________________
     # Load tree
@@ -101,27 +100,34 @@ class ZoneAnalysis(_BaseAnalysis):
       # Trigger primitives
       for ihit, hit in enumerate(evt.hits):
         if is_emtf_legit_hit(hit):
-          lay = find_emtf_layer_Y19(hit)
-          d = out[zone]  # dict of list
-          if lay not in d:
-            d[lay] = []
-          d[lay].append(hit.emtf_theta)
+          out_hits.append([hit.type, hit.station, hit.ring, zone, hit.emtf_theta])
 
     # End loop over events
 
     # __________________________________________________________________________
-    # Print results
+    # Compute results
+    out_hits = np.asarray(out_hits, dtype=np.int32)
+    out_hits_type = out_hits[:, out_hits_metadata['type']]
+    out_hits_station = out_hits[:, out_hits_metadata['station']]
+    out_hits_ring = out_hits[:, out_hits_metadata['ring']]
+    out_hits_zone = out_hits[:, out_hits_metadata['zone']]
+    out_hits_emtf_theta = out_hits[:, out_hits_metadata['emtf_theta']]
+
+    out_hits_ri_layers = find_emtf_ri_layer(out_hits_type, out_hits_station, out_hits_ring)
+
     for zone in range(nzones):
-      d = out[zone]
-      keys = sorted(d.keys())
-      for k in keys:
-        lay = k
-        alist = d[lay]
-        n = len(alist)
+      sel = (out_hits_zone == zone)
+      out_hits_ri_layers_sel = out_hits_ri_layers[sel]
+      out_hits_emtf_theta_sel = out_hits_emtf_theta[sel]
+      layers = np.unique(out_hits_ri_layers_sel)
+
+      for lay in layers:
+        sel1 = (out_hits_ri_layers_sel == lay)
+        out_hits_emtf_theta_sel1 = out_hits_emtf_theta_sel[sel1]
+        n = len(out_hits_emtf_theta_sel1)
         if n > 100:
-          p = np.percentile(alist, [1,2,2.5,3], overwrite_input=True)
-          q = np.percentile(alist, [97,97.5,98,99], overwrite_input=True)
-          print(zone, '%03i' % lay, '%5i' % n, p, q)
+          p = np.percentile(out_hits_emtf_theta_sel1, [1,2,2.5,3,97,97.5,98,99], overwrite_input=True)
+          print(zone, '%03i' % lay, '%5i' % n, p[:4], p[4:])
     return
 
 
