@@ -15,7 +15,7 @@ struct EMTFInversePt {
 
 struct EMTFDZero {
   double operator()(double invpt, double phi, double xv, double yv) const {
-    double B = 3.811;  // in Tesla
+    constexpr double B = 3.811;  // in Tesla
     double R = -1.0 / (0.003 * B * invpt);  // R = -pT/(0.003 q B)  [cm]
     double xc = xv - (R * std::sin(phi));   // xc = xv - R sin(phi)
     double yc = yv + (R * std::cos(phi));   // yc = yv + R cos(phi)

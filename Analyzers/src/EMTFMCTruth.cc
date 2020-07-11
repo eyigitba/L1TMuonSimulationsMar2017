@@ -6,6 +6,14 @@
 #include <iostream>
 
 
+// From L1Trigger/L1TMuonEndCap/interface/MuonTriggerPrimitive.h
+class TriggerPrimitive {
+public:
+  enum subsystem_type{kDT,kCSC,kRPC,kGEM,kME0,kNSubsystems};
+};
+
+
+// _________________________________________________________________________________________________
 EMTFMCTruth::EMTFMCTruth(const edm::ParameterSet& iConfig, edm::ConsumesCollector && iConsumes) :
     cscSimHitsTag_      (iConfig.getParameter<edm::InputTag>("cscSimHitsTag")),
     cscSimHitsXFTag_    (iConfig.getParameter<edm::InputTag>("cscSimHitsXFTag")),
@@ -542,19 +550,20 @@ std::vector<EMTFMCTruth::EndcapSimHit> EMTFMCTruth::findEndcapSimHits() const {
     unsigned int simTrackId = it->trackId();
     EncodedEventId eventId = it->eventId();
     SimHitIdpr matchId(simTrackId, eventId);
+    int sim_tp = -1;  // index of the tp
     auto found = trackingParticleLinks_.find(matchId);
     if (found != trackingParticleLinks_.end()) {
-      int tp = found->second;
-      const int subsystem = 1;
-      const CSCLayer* layer = cscGeomPtr_->layer(detUnitId);
-      const CSCDetId& id = layer->id();
-      const LocalPoint& lp = it->localPosition();
-      const GlobalPoint& gp = layer->toGlobal(lp);
-
-      EndcapSimHit e_simhit = {subsystem, id.station(), id.ring(), id.layer(), id.chamber(), *it, gp, tp};
-      result.emplace_back(e_simhit);
-      //std::cout << "type, lay, cmb, phi, theta, eta, r, z: " << e_simhit.type << " " << e_simhit.layer << " " << e_simhit.chamber << " " << e_simhit.phi << " " << e_simhit.theta << " " << e_simhit.eta << " " << e_simhit.r << " " << e_simhit.z << std::endl;
+      sim_tp = found->second;
     }
+
+    const CSCLayer* layer = cscGeomPtr_->layer(detUnitId);
+    const CSCDetId& id = layer->id();
+    const LocalPoint& lp = it->localPosition();
+    const GlobalPoint& gp = layer->toGlobal(lp);
+
+    EndcapSimHit e_simhit = {TriggerPrimitive::kCSC, id.station(), id.ring(), id.layer(), id.chamber(), *it, gp, sim_tp};
+    result.emplace_back(e_simhit);
+    //std::cout << "type, lay, cmb, phi, theta, eta, r, z: " << e_simhit.type << " " << e_simhit.layer << " " << e_simhit.chamber << " " << e_simhit.phi << " " << e_simhit.theta << " " << e_simhit.eta << " " << e_simhit.r << " " << e_simhit.z << std::endl;
   }
 
   // RPC
@@ -563,23 +572,24 @@ std::vector<EMTFMCTruth::EndcapSimHit> EMTFMCTruth::findEndcapSimHits() const {
     unsigned int simTrackId = it->trackId();
     EncodedEventId eventId = it->eventId();
     SimHitIdpr matchId(simTrackId, eventId);
+    int sim_tp = -1;  // index of the tp
     auto found = trackingParticleLinks_.find(matchId);
     if (found != trackingParticleLinks_.end()) {
-      int tp = found->second;
-      const int subsystem = 2;
-      const RPCRoll* roll = rpcGeomPtr_->roll(detUnitId);
-      const RPCDetId& id = roll->id();
-      if (id.region() == 0)  continue;  // ignore barrel RPC
-      const bool is_irpc = (id.station() == 3 || id.station() == 4) && (id.ring() == 1);
-      const int id_chamber = is_irpc ? ((id.sector() - 1)*3 + id.subsector()) : ((id.sector() - 1)*6 + id.subsector());
-
-      const LocalPoint& lp = it->localPosition();
-      const GlobalPoint& gp = roll->toGlobal(lp);
-
-      EndcapSimHit e_simhit = {subsystem, id.station(), id.ring(), id.layer(), id_chamber, *it, gp, tp};
-      result.emplace_back(e_simhit);
-      //std::cout << "type, lay, cmb, phi, theta, eta, r, z: " << e_simhit.type << " " << e_simhit.layer << " " << e_simhit.chamber << " " << e_simhit.phi << " " << e_simhit.theta << " " << e_simhit.eta << " " << e_simhit.r << " " << e_simhit.z << std::endl;
+      sim_tp = found->second;
     }
+
+    const RPCRoll* roll = rpcGeomPtr_->roll(detUnitId);
+    const RPCDetId& id = roll->id();
+    if (id.region() == 0)  continue;  // ignore barrel RPC
+    const LocalPoint& lp = it->localPosition();
+    const GlobalPoint& gp = roll->toGlobal(lp);
+
+    const bool is_irpc = (id.station() == 3 || id.station() == 4) && (id.ring() == 1);
+    const int id_chamber = is_irpc ? ((id.sector() - 1)*3 + id.subsector()) : ((id.sector() - 1)*6 + id.subsector());
+
+    EndcapSimHit e_simhit = {TriggerPrimitive::kRPC, id.station(), id.ring(), id.layer(), id_chamber, *it, gp, sim_tp};
+    result.emplace_back(e_simhit);
+    //std::cout << "type, lay, cmb, phi, theta, eta, r, z: " << e_simhit.type << " " << e_simhit.layer << " " << e_simhit.chamber << " " << e_simhit.phi << " " << e_simhit.theta << " " << e_simhit.eta << " " << e_simhit.r << " " << e_simhit.z << std::endl;
   }
 
   // GEM
@@ -588,19 +598,20 @@ std::vector<EMTFMCTruth::EndcapSimHit> EMTFMCTruth::findEndcapSimHits() const {
     unsigned int simTrackId = it->trackId();
     EncodedEventId eventId = it->eventId();
     SimHitIdpr matchId(simTrackId, eventId);
+    int sim_tp = -1;  // index of the tp
     auto found = trackingParticleLinks_.find(matchId);
     if (found != trackingParticleLinks_.end()) {
-      int tp = found->second;
-      const int subsystem = 3;
-      const GEMEtaPartition* roll = gemGeomPtr_->etaPartition(detUnitId);
-      const GEMDetId& id = roll->id();
-      const LocalPoint& lp = it->localPosition();
-      const GlobalPoint& gp = roll->toGlobal(lp);
-
-      EndcapSimHit e_simhit = {subsystem, id.station(), id.ring(), id.layer(), id.chamber(), *it, gp, tp};
-      result.emplace_back(e_simhit);
-      //std::cout << "type, lay, cmb, phi, theta, eta, r, z: " << e_simhit.type << " " << e_simhit.layer << " " << e_simhit.chamber << " " << e_simhit.phi << " " << e_simhit.theta << " " << e_simhit.eta << " " << e_simhit.r << " " << e_simhit.z << std::endl;
+      sim_tp = found->second;
     }
+
+    const GEMEtaPartition* roll = gemGeomPtr_->etaPartition(detUnitId);
+    const GEMDetId& id = roll->id();
+    const LocalPoint& lp = it->localPosition();
+    const GlobalPoint& gp = roll->toGlobal(lp);
+
+    EndcapSimHit e_simhit = {TriggerPrimitive::kGEM, id.station(), id.ring(), id.layer(), id.chamber(), *it, gp, sim_tp};
+    result.emplace_back(e_simhit);
+    //std::cout << "type, lay, cmb, phi, theta, eta, r, z: " << e_simhit.type << " " << e_simhit.layer << " " << e_simhit.chamber << " " << e_simhit.phi << " " << e_simhit.theta << " " << e_simhit.eta << " " << e_simhit.r << " " << e_simhit.z << std::endl;
   }
 
   // ME0
@@ -609,19 +620,20 @@ std::vector<EMTFMCTruth::EndcapSimHit> EMTFMCTruth::findEndcapSimHits() const {
     unsigned int simTrackId = it->trackId();
     EncodedEventId eventId = it->eventId();
     SimHitIdpr matchId(simTrackId, eventId);
+    int sim_tp = -1;  // index of the tp
     auto found = trackingParticleLinks_.find(matchId);
     if (found != trackingParticleLinks_.end()) {
-      int tp = found->second;
-      const int subsystem = 4;
-      const ME0EtaPartition* roll = me0GeomPtr_->etaPartition(detUnitId);
-      const ME0DetId& id = roll->id();
-      const LocalPoint& lp = it->localPosition();
-      const GlobalPoint& gp = roll->toGlobal(lp);
-
-      EndcapSimHit e_simhit = {subsystem, id.station(), 1, id.layer(), id.chamber(), *it, gp, tp};
-      result.emplace_back(e_simhit);
-      //std::cout << "type, lay, cmb, phi, theta, eta, r, z: " << e_simhit.type << " " << e_simhit.layer << " " << e_simhit.chamber << " " << e_simhit.phi << " " << e_simhit.theta << " " << e_simhit.eta << " " << e_simhit.r << " " << e_simhit.z << std::endl;
+      sim_tp = found->second;
     }
+
+    const ME0EtaPartition* roll = me0GeomPtr_->etaPartition(detUnitId);
+    const ME0DetId& id = roll->id();
+    const LocalPoint& lp = it->localPosition();
+    const GlobalPoint& gp = roll->toGlobal(lp);
+
+    EndcapSimHit e_simhit = {TriggerPrimitive::kME0, id.station(), 1, id.layer(), id.chamber(), *it, gp, sim_tp};
+    result.emplace_back(e_simhit);
+    //std::cout << "type, lay, cmb, phi, theta, eta, r, z: " << e_simhit.type << " " << e_simhit.layer << " " << e_simhit.chamber << " " << e_simhit.phi << " " << e_simhit.theta << " " << e_simhit.eta << " " << e_simhit.r << " " << e_simhit.z << std::endl;
   }
 
   // DT
@@ -630,20 +642,21 @@ std::vector<EMTFMCTruth::EndcapSimHit> EMTFMCTruth::findEndcapSimHits() const {
     unsigned int simTrackId = it->trackId();
     EncodedEventId eventId = it->eventId();
     SimHitIdpr matchId(simTrackId, eventId);
+    int sim_tp = -1;  // index of the tp
     auto found = trackingParticleLinks_.find(matchId);
     if (found != trackingParticleLinks_.end()) {
-      int tp = found->second;
-      const int subsystem = 0;
-      const DTWireId wireid(detUnitId);
-      const DTLayer* layer = dtGeomPtr_->layer(wireid.layerId());
-      const DTLayerId& id = layer->id();
-      const LocalPoint& lp = it->localPosition();
-      const GlobalPoint& gp = layer->toGlobal(lp);
-
-      EndcapSimHit e_simhit = {subsystem, id.station(), 1, id.layer(), id.sector(), *it, gp, tp};
-      result.emplace_back(e_simhit);
-      //std::cout << "type, lay, cmb, phi, theta, eta, r, z: " << e_simhit.type << " " << e_simhit.layer << " " << e_simhit.chamber << " " << e_simhit.phi << " " << e_simhit.theta << " " << e_simhit.eta << " " << e_simhit.r << " " << e_simhit.z << std::endl;
+      sim_tp = found->second;
     }
+
+    const DTWireId wireid(detUnitId);
+    const DTLayer* layer = dtGeomPtr_->layer(wireid.layerId());
+    const DTLayerId& id = layer->id();
+    const LocalPoint& lp = it->localPosition();
+    const GlobalPoint& gp = layer->toGlobal(lp);
+
+    EndcapSimHit e_simhit = {TriggerPrimitive::kDT, id.station(), 1, id.layer(), id.sector(), *it, gp, sim_tp};
+    result.emplace_back(e_simhit);
+    //std::cout << "type, lay, cmb, phi, theta, eta, r, z: " << e_simhit.type << " " << e_simhit.layer << " " << e_simhit.chamber << " " << e_simhit.phi << " " << e_simhit.theta << " " << e_simhit.eta << " " << e_simhit.r << " " << e_simhit.z << std::endl;
   }
 
   return result;
