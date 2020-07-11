@@ -7,6 +7,7 @@ from __future__ import print_function
 import numpy as np
 
 from emtf_algos import *
+from emtf_ntuples import *
 
 
 # ______________________________________________________________________________
@@ -20,7 +21,7 @@ class EMTFSectorRanking(object):
     self.sectors.fill(0)
 
   def add(self, hit):
-    endsec = calc_endsec(hit.endcap, hit.sector)
+    endsec = get_trigger_endsec(hit.endcap, hit.sector)
     hit_lay = find_emtf_layer(hit)
     a, b, c = (hit_lay//100), (hit_lay//10)%10, hit_lay%10  # type, station, ring
 
@@ -246,7 +247,7 @@ class SignalAnalysis(_BaseAnalysis):
 
       # Trigger primitives
       for ihit, hit in enumerate(evt.hits):
-        if is_emtf_legit_hit(hit) and calc_endsec(hit.endcap, hit.sector) == best_sector:
+        if is_emtf_legit_hit(hit) and get_trigger_endsec(hit.endcap, hit.sector) == best_sector:
           if min_emtf_strip <= hit.emtf_phi < max_emtf_strip:
             zones.add(hit)
 
@@ -293,7 +294,7 @@ class SignalAnalysis(_BaseAnalysis):
         print('Processing event {0}'.format(ievt))
         print('.. part {0} {1} {2} {3} {4} {5}'.format(0, part.pt, part.eta, part.phi, part.invpt, part.d0))
         for ihit, hit in enumerate(evt.hits):
-          hit_id = (hit.type, hit.station, hit.ring, calc_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
+          hit_id = (hit.type, hit.station, hit.ring, get_trigger_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
           hit_sim_tp = hit.sim_tp1
           if (hit.type == kCSC) and (hit_sim_tp != hit.sim_tp2):
             hit_sim_tp = -1
@@ -375,7 +376,7 @@ class BkgndAnalysis(_BaseAnalysis):
       # Trigger primitives
       for sector in range(num_emtf_sectors):
         for ihit, hit in enumerate(evt.hits):
-          if is_emtf_legit_hit(hit) and calc_endsec(hit.endcap, hit.sector) == sector:
+          if is_emtf_legit_hit(hit) and get_trigger_endsec(hit.endcap, hit.sector) == sector:
             if min_emtf_strip <= hit.emtf_phi < max_emtf_strip:
               sector_zones[sector].add(hit)
 
@@ -392,7 +393,7 @@ class BkgndAnalysis(_BaseAnalysis):
       if verbosity >= kINFO:
         print('Processing event {0}'.format(ievt))
         for ihit, hit in enumerate(evt.hits):
-          hit_id = (hit.type, hit.station, hit.ring, calc_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
+          hit_id = (hit.type, hit.station, hit.ring, get_trigger_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
           hit_sim_tp = hit.sim_tp1
           if (hit.type == kCSC) and (hit_sim_tp != hit.sim_tp2):
             hit_sim_tp = -1

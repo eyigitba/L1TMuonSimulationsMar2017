@@ -6,7 +6,10 @@ from __future__ import print_function
 
 import numpy as np
 
+from numba import njit
+
 from emtf_algos import *
+from emtf_ntuples import *
 
 
 # ______________________________________________________________________________
@@ -49,7 +52,7 @@ class DummyAnalysis(_BaseAnalysis):
       # Trigger primitives
       if verbosity >= kINFO:
         for ihit, hit in enumerate(evt.hits):
-          hit_id = (hit.type, hit.station, hit.ring, calc_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
+          hit_id = (hit.type, hit.station, hit.ring, get_trigger_endsec(hit.endcap, hit.sector), hit.fr, hit.bx)
           hit_sim_tp = hit.sim_tp1
           if (hit.type == kCSC) and (hit_sim_tp != hit.sim_tp2):
             hit_sim_tp = -1
@@ -76,7 +79,6 @@ class ZoneAnalysis(_BaseAnalysis):
       ind = np.searchsorted(eta_bins, np.abs(eta))
       return (len(eta_bins)-1) - ind  # ind = (1,2,3,4) -> zone (3,2,1,0)
 
-    nzones = len(eta_bins) - 1
     out_hits = []
     out_hits_metadata = {'type': 0, 'station': 1, 'ring': 2, 'zone': 3, 'emtf_theta': 4}
 
@@ -103,10 +105,10 @@ class ZoneAnalysis(_BaseAnalysis):
           out_hits.append([hit.type, hit.station, hit.ring, zone, hit.emtf_theta])
 
     # End loop over events
+    out_hits = np.asarray(out_hits, dtype=np.int32)
 
     # __________________________________________________________________________
     # Compute results
-    out_hits = np.asarray(out_hits, dtype=np.int32)
     out_hits_type = out_hits[:, out_hits_metadata['type']]
     out_hits_station = out_hits[:, out_hits_metadata['station']]
     out_hits_ring = out_hits[:, out_hits_metadata['ring']]
@@ -114,8 +116,11 @@ class ZoneAnalysis(_BaseAnalysis):
     out_hits_emtf_theta = out_hits[:, out_hits_metadata['emtf_theta']]
 
     out_hits_ri_layers = find_emtf_ri_layer(out_hits_type, out_hits_station, out_hits_ring)
+    assert (out_hits_ri_layers != -99).all()
 
-    for zone in range(nzones):
+    print('Find zone boundaries')
+    n_zones = len(eta_bins) - 1
+    for zone in range(n_zones):
       sel = (out_hits_zone == zone)
       out_hits_ri_layers_sel = out_hits_ri_layers[sel]
       out_hits_emtf_theta_sel = out_hits_emtf_theta[sel]
@@ -128,6 +133,140 @@ class ZoneAnalysis(_BaseAnalysis):
         if n > 100:
           p = np.percentile(out_hits_emtf_theta_sel1, [1,2,2.5,3,97,97.5,98,99], overwrite_input=True)
           print(zone, '%03i' % lay, '%5i' % n, p[:4], p[4:])
+
+    # Done
+    return
+
+# ______________________________________________________________________________
+class ChamberAnalysis(_BaseAnalysis):
+  """Check chamber num of segments.
+
+  Description.
+  """
+
+  def run(self, algo, pileup=200):
+    # Overwrite maxevents
+    maxevents = -1
+
+    out_hits = []
+    out_hits_metadata = {'type': 0, 'station': 1, 'sector': 2, 'subsector': 3, 'cscid': 4, 'neighbor': 5, 'bx': 6, 'ievt': 7}
+
+    out_simhits = []
+    out_simhits_metadata = {'type': 0, 'station': 1, 'sector': 2, 'subsector': 3, 'cscid': 4, 'neighbor': 5, 'bx': 6, 'ievt': 7}
+
+    # __________________________________________________________________________
+    # Load tree
+    tree = load_pgun_batch(jobid)
+
+    # Loop over events
+    for ievt, evt in enumerate(tree):
+      if maxevents != -1 and ievt == maxevents:
+        break
+
+      # Trigger primitives
+      for ihit, hit in enumerate(evt.hits):
+        if is_emtf_legit_hit(hit):
+          out_hits.append([hit.type, hit.station, get_trigger_endsec(hit.endcap, hit.sector), hit.subsector, hit.cscid, hit.neighbor, hit.bx, ievt])
+
+      # Sim hits
+      for isimhit, simhit in enumerate(evt.simhits):
+        if is_emtf_legit_hit(simhit):
+          simhit.bx = 0
+          simhit.endcap = +1 if simhit.z >= 0 else -1
+          if simhit.type == kME0:
+            # Special case for ME0 as it is a 20-deg chamber. Pretend it is ME2/1 when calling these functions.
+            fake_station, fake_ring = 2, 1
+            simhit.sector = get_trigger_sector(fake_ring, fake_station, simhit.chamber)
+            simhit.subsector = get_trigger_subsector(fake_ring, fake_station, simhit.chamber)
+            simhit.cscid = get_trigger_cscid(fake_ring, fake_station, simhit.chamber)
+            simhit.neighid = get_trigger_neighid(fake_ring, fake_station, simhit.chamber)
+          else:
+            simhit.sector = get_trigger_sector(simhit.ring, simhit.station, simhit.chamber)
+            simhit.subsector = get_trigger_subsector(simhit.ring, simhit.station, simhit.chamber)
+            simhit.cscid = get_trigger_cscid(simhit.ring, simhit.station, simhit.chamber)
+            simhit.neighid = get_trigger_neighid(simhit.ring, simhit.station, simhit.chamber)
+
+          simhit.neighbor = 0
+          out_simhits.append([simhit.type, simhit.station, get_trigger_endsec(simhit.endcap, simhit.sector), simhit.subsector, simhit.cscid, simhit.neighbor, simhit.bx, ievt])
+
+          if simhit.neighid == 1:
+            # If neighbor, share simhit with the neighbor sector
+            old_sector = simhit.sector
+            simhit.sector = old_sector + 1 if old_sector != 6 else 1
+            simhit.neighbor = 1
+            out_simhits.append([simhit.type, simhit.station, get_trigger_endsec(simhit.endcap, simhit.sector), simhit.subsector, simhit.cscid, simhit.neighbor, simhit.bx, ievt])
+
+    # End loop over events
+    out_hits = np.asarray(out_hits, dtype=np.int32)
+    out_simhits = np.asarray(out_simhits, dtype=np.int32)
+
+    # __________________________________________________________________________
+    # Compute results (1)
+    out_hits_type = out_hits[:, out_hits_metadata['type']]
+    out_hits_station = out_hits[:, out_hits_metadata['station']]
+    out_hits_sector = out_hits[:, out_hits_metadata['sector']]
+    out_hits_cscid = out_hits[:, out_hits_metadata['cscid']]
+    out_hits_subsector = out_hits[:, out_hits_metadata['subsector']]
+    out_hits_neighbor = out_hits[:, out_hits_metadata['neighbor']]
+    out_hits_bx = out_hits[:, out_hits_metadata['bx']]
+    out_hits_ievt = out_hits[:, out_hits_metadata['ievt']]
+
+    out_hits_chambers = find_emtf_chamber(out_hits_type, out_hits_station, out_hits_cscid, out_hits_subsector, out_hits_neighbor)
+    assert (out_hits_chambers != -99).all()
+
+    sel = (out_hits_bx == 0) & (out_hits_sector == 0)  # check only one bx and one sector
+    out_hits_chambers_sel = out_hits_chambers[sel]
+    out_hits_ievt_sel = out_hits_ievt[sel]
+
+    n_chambers = out_hits_chambers_sel.max() + 1
+    n_events = out_hits_ievt_sel.max() + 1
+    chamber_counts = np.zeros((n_chambers, n_events), dtype=np.int32)
+
+    @njit
+    def jit_op(out_hits_chambers_sel, out_hits_ievt_sel, chamber_counts):
+      for i in range(len(out_hits_chambers_sel)):
+        chamb = out_hits_chambers_sel[i]
+        ievt = out_hits_ievt_sel[i]
+        chamber_counts[chamb, ievt] += 1
+      return
+
+    jit_op(out_hits_chambers_sel, out_hits_ievt_sel, chamber_counts)
+
+    print('Check chamber num of segments')
+    chamber_counts_max = np.max(chamber_counts, axis=-1)
+    for chamb in range(n_chambers):
+      print(chamb, chamber_counts_max[chamb])
+
+    # __________________________________________________________________________
+    # Compute results (2)
+    out_hits_type = out_simhits[:, out_simhits_metadata['type']]
+    out_hits_station = out_simhits[:, out_simhits_metadata['station']]
+    out_hits_sector = out_simhits[:, out_simhits_metadata['sector']]
+    out_hits_cscid = out_simhits[:, out_simhits_metadata['cscid']]
+    out_hits_subsector = out_simhits[:, out_simhits_metadata['subsector']]
+    out_hits_neighbor = out_simhits[:, out_simhits_metadata['neighbor']]
+    out_hits_bx = out_simhits[:, out_simhits_metadata['bx']]
+    out_hits_ievt = out_simhits[:, out_simhits_metadata['ievt']]
+
+    out_hits_chambers = find_emtf_chamber(out_hits_type, out_hits_station, out_hits_cscid, out_hits_subsector, out_hits_neighbor)
+    assert (out_hits_chambers != -99).all()
+
+    sel = (out_hits_bx == 0) & (out_hits_sector == 0)  # check only one bx and one sector
+    out_hits_chambers_sel = out_hits_chambers[sel]
+    out_hits_ievt_sel = out_hits_ievt[sel]
+
+    n_chambers = out_hits_chambers_sel.max() + 1
+    n_events = out_hits_ievt_sel.max() + 1
+    chamber_counts = np.zeros((n_chambers, n_events), dtype=np.int32)
+
+    jit_op(out_hits_chambers_sel, out_hits_ievt_sel, chamber_counts)
+
+    print('Check chamber num of simhits')
+    chamber_counts_max = np.max(chamber_counts, axis=-1)
+    for chamb in range(n_chambers):
+      print(chamb, chamber_counts_max[chamb])
+
+    # Done
     return
 
 
@@ -141,8 +280,9 @@ algo = 'default'  # phase 2
 #algo = 'run3'
 
 # Analysis mode (pick one)
-analysis = 'dummy'
+#analysis = 'dummy'
 #analysis = 'zone'
+analysis = 'chamber'
 
 # Job id (pick an integer)
 jobid = 0
@@ -197,6 +337,10 @@ def app():
 
   elif analysis == 'zone':
     myapp = ZoneAnalysis()
+    myargs = dict(algo=algo)
+
+  elif analysis == 'chamber':
+    myapp = ChamberAnalysis()
     myargs = dict(algo=algo)
 
   else:
