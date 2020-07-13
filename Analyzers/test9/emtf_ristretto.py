@@ -21,19 +21,20 @@ class EMTFSectorRanking(object):
     self.sectors.fill(0)
 
   def add(self, hit):
-    endsec = get_trigger_endsec(hit.endcap, hit.sector)
-    hit_lay = find_emtf_layer(hit)
-    a, b, c = (hit_lay//100), (hit_lay//10)%10, hit_lay%10  # type, station, ring
+    ri_layer = find_emtf_ri_layer(hit.type, hit.station, hit.ring)
+    assert (0 <= ri_layer and ri_layer <= 18)
+    ri_layer_valid = np.zeros(8, dtype=np.bool)
+    ri_layer_valid[0] = (ri_layer == 18)              # ME0
+    ri_layer_valid[1] = (ri_layer == 0)               # ME1/1
+    ri_layer_valid[2] = (ri_layer in (1,2))           # ME1/2, ME1/3
+    ri_layer_valid[3] = (ri_layer in (3,4))           # ME2/1, ME2/2
+    ri_layer_valid[4] = (ri_layer in (5,6))           # ME3/1, ME3/2
+    ri_layer_valid[5] = (ri_layer in (7,8))           # ME4/1, ME4/2
+    ri_layer_valid[6] = (ri_layer in (9,10,11,12,13)) # GE1/1, RE1/2, GE2/1, RE2/2
+    ri_layer_valid[7] = (ri_layer in (14,15,16,17))   # RE3/1, RE3/2, RE4/1, RE4/2
+    rank = np.packbits(ri_layer_valid)
 
-    rank = np.int32(0)
-    if a == 5 and b == 1:   # a = (5,) b = (1,) -> bit position (11,)
-      rank |= (1 << (11 + 0))
-    elif a == 5 and b == 0: # a = (5,) b = (0,) -> bit position (10,)
-      rank |= (1 << (10 + 0))
-    elif a < 5 and b == 0:  # a = (0,1,2,3,4,) b = (0,) -> bit position (9,8,7,6,5,)
-      rank |= (1 << (5 + (4 - a)))
-    elif a < 5 and b == 1:  # a = (0,1,2,3,4,) b = (1,) -> bit position (4,3,2,1,0,)
-      rank |= (1 << (0 + (4 - a)))
+    endsec = get_trigger_endsec(hit.endcap, hit.sector)
     self.sectors[endsec] |= rank
 
   def get_best_sector(self):
@@ -41,148 +42,130 @@ class EMTFSectorRanking(object):
     best_sector_rank = self.sectors[best_sector]
     return (best_sector, best_sector_rank)
 
-class EMTFZoneArtist(object):
-  def __init__(self):
-    num_cols = (max_emtf_strip//coarse_emtf_strip)
-    num_rows = 10
-    num_zones = 4
-    self.zones = np.empty((num_zones, num_rows, num_cols), dtype=np.object)
-    for ind in np.ndindex(self.zones.shape):
-      self.zones[ind] = []
+class EMTFChamberCouncil(object):
+  def __init__(self, is_sim=False):
+    self.chambers = {}
+    self.is_sim = is_sim
 
   def reset(self):
-    for ind in np.ndindex(self.zones.shape):
-      if len(self.zones[ind]) == 0:
-        continue
-      del self.zones[ind][:]
+    self.chambers.clear()
 
   def add(self, hit):
-    zones = find_emtf_zones(hit)
-    for zone in zones:
-      row = find_emtf_zone_row(hit, zone)
-      col = find_emtf_zone_col(hit)
-      self.zones[zone, row, col].append(hit)
+    # Call functions
+    emtf_layer = find_emtf_layer(hit.type, hit.station, hit.ring)
+    ri_layer = find_emtf_ri_layer(hit.type, hit.station, hit.ring)
+    emtf_chamber = find_emtf_chamber(hit.type, hit.station, hit.cscid, hit.subsector, hit.neighbor)
+    emtf_segment = 0
+    zones = find_emtf_zones(ri_layer, hit.emtf_theta)
+    timezones = find_emtf_timezones(ri_layer, hit.bx)
+    try:
+      detlayer = hit.layer
+    except:
+      detlayer = 0
 
-  def _uniquify(self):
-    def get_sort_criteria(hit):
-      ri = 0 if hit.ring == 1 else 1 # prefer ring 1
-      fr = 0 if hit.fr == 1 else 1   # prefer front chamber
-      bd = np.abs(hit.bend)          # prefer smaller bend
-      return (ri, fr, bd)
+    emtf_phi = find_emtf_phi(hit)
+    emtf_theta = find_emtf_theta(hit)
+    emtf_theta_alt = emtf_theta
+    emtf_bend = find_emtf_bend(hit)
+    emtf_qual = find_emtf_qual(hit)
+    emtf_time = find_emtf_time(hit)
 
-    # Sort and select
-    for ind in np.ndindex(self.zones.shape):
-      if len(self.zones[ind]) == 0:
-        continue
+    # Assign variables
+    hit.emtf_layer = emtf_layer
+    hit.ri_layer = ri_layer
+    hit.emtf_chamber = emtf_chamber
+    hit.emtf_segment = emtf_segment
+    hit.zones = zones
+    hit.timezones = timezones
+    hit.detlayer = detlayer
 
-      alist = self.zones[ind][:]  # make a copy
-      if len(alist) > 1:
-        alist.sort(key=get_sort_criteria)  # in-place sorting
-        self.zones[ind] = alist[0:1]  # only keep the best one
+    hit.emtf_phi = emtf_phi
+    hit.emtf_theta = emtf_theta
+    hit.emtf_theta_alt = emtf_theta_alt
+    hit.emtf_bend = emtf_bend
+    hit.emtf_qual = emtf_qual
+    hit.emtf_time = emtf_time
 
-      # Pick up theta ambiguities
-      assert(len(self.zones[ind]) == 1)
-      ahit = self.zones[ind][0]
-      ahit.emtf_theta_alt = 0
-      if ahit.type == kCSC:
-        for hit in alist:
-          if ahit.chamber == hit.chamber and ahit.strip == hit.strip and ahit.wire != hit.wire:
-            ahit.emtf_theta_alt = hit.emtf_theta
+    # Add hit to chamber
+    k = (hit.bx, hit.emtf_chamber)
+    if k not in self.chambers:
+      self.chambers[k] = []
+    self.chambers[k].append(hit)
 
-  def _transform(self, ind):
-    # 9 members: zone, zone_row, zone_col, emtf_phi,
-    #            emtf_bend, emtf_theta, emtf_theta_alt, emtf_qual, emtf_time
-    assert(len(self.zones[ind]) == 1)
-    hit = self.zones[ind][0]
-    arr = np.zeros(9, dtype=np.int32)
-    arr[0] = ind[0]
-    arr[1] = ind[1]
-    arr[2] = ind[2]
-    arr[3] = hit.emtf_phi
-    arr[4] = find_emtf_bend(hit)
-    arr[5] = hit.emtf_theta
-    arr[6] = hit.emtf_theta_alt
-    arr[7] = find_emtf_qual(hit)
-    arr[8] = find_emtf_time(hit)
+  def _to_numpy(self, hits):
+    default_value = -99
+    getter = lambda hit: [hit.emtf_layer, hit.ri_layer, hit.zones, hit.timezones,
+                          hit.emtf_chamber, hit.emtf_segment, hit.detlayer, hit.bx,
+                          hit.emtf_phi, hit.emtf_bend, hit.emtf_theta, hit.emtf_theta_alt,
+                          hit.emtf_qual, hit.emtf_time, hit.fr, default_value]
+    arr = np.array([getter(hit) for hit in hits], dtype=np.int32)
     return arr
 
-  def squeeze(self):
-    self._uniquify()
+  def _get_hits_from_chambers_sim(self):
+    hits = []
+    sorted_keys = sorted(self.chambers.keys())
+    for k in sorted_keys:
+      (bx, emtf_chamber) = k
+      tmp_hits = self.chambers[k]
 
-    # List of arrays, each array has 8 members
-    out = []
-    for ind in np.ndindex(self.zones.shape):
-      if len(self.zones[ind]) == 0:
-        continue
-      arr = self._transform(ind)
-      out.append(arr)
-    return out
-
-class EMTFZoneScientist(object):
-  def __init__(self):
-    num_cols = 1  # only one column for all sim hits
-    num_rows = 10
-    num_zones = 4
-    self.zones = np.empty((num_zones, num_rows, num_cols), dtype=np.object)
-    for ind in np.ndindex(self.zones.shape):
-      self.zones[ind] = []
-
-  def reset(self):
-    for ind in np.ndindex(self.zones.shape):
-      if len(self.zones[ind]) == 0:
-        continue
-      del self.zones[ind][:]
-
-  def add(self, hit):
-    zones = find_emtf_zones(hit)
-    for zone in zones:
-      row = find_emtf_zone_row(hit, zone)
-      col = 0
-      self.zones[zone, row, col].append(hit)
-
-  def _uniquify(self):
-    # Sort and select
-    for ind in np.ndindex(self.zones.shape):
-      if len(self.zones[ind]) == 0:
-        continue
-
-      alist = self.zones[ind][:]  # make a copy
-      if len(alist) > 1:
-        alist.sort(key=lambda hit: hit.layer)  # sort by layer number
-        if alist[0].type == kRPC or alist[0].type == kGEM:
-          self.zones[ind] = alist[0:1]  # keep the first one for RPC and GEM
+      # If more than one hit, sort by layer number.
+      # For RPC and GEM, keep the first one; For CSC, ME0 and DT, keep the median
+      ind = 0
+      if len(tmp_hits) > 1:
+        tmp_hits.sort(key=lambda hit: hit.layer)
+        if tmp_hits[0].type == kRPC or tmp_hits[0].type == kGEM:
+          ind = 0
         else:
-          middle = 0 if len(alist) == 0 else (len(alist)-1)//2
-          self.zones[ind] = alist[middle:middle+1]  # keep the median for CSC, ME0, DT
+          ind = (len(tmp_hits)-1)//2
 
-  def _transform(self, ind):
-    # 9 members: zone, zone_row, zone_col, emtf_phi,
-    #            emtf_bend, emtf_theta, emtf_theta_alt, emtf_qual, emtf_time
-    assert(len(self.zones[ind]) == 1)
-    hit = self.zones[ind][0]
-    arr = np.zeros(9, dtype=np.int32)
-    arr[0] = ind[0]
-    arr[1] = ind[1]
-    arr[2] = find_emtf_zone_col(hit)
-    arr[3] = hit.emtf_phi
-    arr[4] = 0
-    arr[5] = hit.emtf_theta
-    arr[6] = 0
-    arr[7] = 0
-    arr[8] = 0
-    return arr
+      hit = tmp_hits[ind]
+      hits.append(hit)
+    return hits
 
-  def squeeze(self):
-    self._uniquify()
+  def _get_hits_from_chambers(self):
+    hits = []
+    sorted_keys = sorted(self.chambers.keys())
+    for k in sorted_keys:
+      (bx, emtf_chamber) = k
+      tmp_hits = self.chambers[k]
 
-    # List of arrays, each array has 8 members
-    out = []
-    for ind in np.ndindex(self.zones.shape):
-      if len(self.zones[ind]) == 0:
-        continue
-      arr = self._transform(ind)
-      out.append(arr)
-    return out
+      if emtf_chamber < 54:  # CSC
+        assert len(tmp_hits) in (1,2,4)
+        emtf_phi_a = np.min([hit.emtf_phi for hit in tmp_hits])
+        emtf_phi_b = np.max([hit.emtf_phi for hit in tmp_hits])
+        emtf_theta_a = np.min([hit.emtf_theta for hit in tmp_hits])
+        emtf_theta_b = np.max([hit.emtf_theta for hit in tmp_hits])
+
+        emtf_segment = 0
+        for hit in tmp_hits:
+          keep = False
+          if (hit.emtf_phi == emtf_phi_a) and (hit.emtf_theta == emtf_theta_a):
+            keep = True
+            hit.emtf_theta_alt = emtf_theta_b
+          elif (hit.emtf_phi == emtf_phi_b) and (hit.emtf_theta == emtf_theta_b):
+            keep = True
+            hit.emtf_theta_alt = emtf_theta_a
+
+          if keep:
+            hit.emtf_segment = emtf_segment
+            emtf_segment += 1
+            hits.append(hit)
+
+      else:  # non-CSC
+        emtf_segment = 0
+        for hit in tmp_hits:
+          hit.emtf_segment = emtf_segment
+          emtf_segment += 1
+          hits.append(hit)
+    return hits
+
+  def get_hits(self):
+    if self.is_sim:
+      hits = self._get_hits_from_chambers_sim()
+    else:
+      hits = self._get_hits_from_chambers()
+    hits = self._to_numpy(hits)
+    return hits
 
 
 # ______________________________________________________________________________
@@ -199,19 +182,23 @@ class SignalAnalysis(_BaseAnalysis):
   Description.
   """
 
-  def run(self, algo):
+  def run(self, algo, signal='prompt'):
     out_part = []
     out_hits = []
     out_simhits = []
 
     sectors = EMTFSectorRanking()
-    zones = EMTFZoneArtist()
-    zones_simhits = EMTFZoneScientist()
+    chambers = EMTFChamberCouncil()
+    chambers_simhits = EMTFChamberCouncil(is_sim=True)
 
     # __________________________________________________________________________
     # Load tree
-    tree = load_pgun_displ_batch(jobid)
-    #tree = load_pgun_test()
+    if signal == 'prompt':
+      tree = load_pgun_batch(jobid)
+    elif signal == 'displ':
+      tree = load_pgun_displ_batch(jobid)
+    else:
+      raise RuntimeError('Unexpected signal: {0}'.format(signal))
 
     # Loop over events
     for ievt, evt in enumerate(tree):
@@ -223,8 +210,8 @@ class SignalAnalysis(_BaseAnalysis):
 
       # Reset
       sectors.reset()
-      zones.reset()
-      zones_simhits.reset()
+      chambers.reset()
+      chambers_simhits.reset()
 
       # Particles
       try:
@@ -240,49 +227,66 @@ class SignalAnalysis(_BaseAnalysis):
           sectors.add(hit)
 
       (best_sector, best_sector_rank) = sectors.get_best_sector()
-      if best_sector_rank == 0:
-        continue
 
-      # Second, fill the zones with trigger primitives
+      # Second, fill the chambers with trigger primitives
 
       # Trigger primitives
       for ihit, hit in enumerate(evt.hits):
         if is_emtf_legit_hit(hit) and get_trigger_endsec(hit.endcap, hit.sector) == best_sector:
           if min_emtf_strip <= hit.emtf_phi < max_emtf_strip:
-            zones.add(hit)
+            chambers.add(hit)
 
-      # Third, fill the zones with sim hits
+      # Third, fill the chambers with sim hits
 
       # Sim hits
       for isimhit, simhit in enumerate(evt.simhits):
-        simhit.emtf_phi = calc_phi_loc_int(np.rad2deg(simhit.phi), (best_sector%6) + 1)
-        simhit.emtf_theta = calc_theta_int(np.rad2deg(simhit.theta), 1 if ((best_sector//6) == 0) else -1)
-        if min_emtf_strip <= simhit.emtf_phi < max_emtf_strip:
-          zones_simhits.add(simhit)
+        if is_emtf_legit_hit(simhit):
+          if simhit.type == kME0:
+            # Special case for ME0 as it is a 20-deg chamber. Pretend it is ME2/1 when calling these functions.
+            fake_station, fake_ring = 2, 1
+            simhit.endcap = +1 if simhit.z >= 0 else -1
+            simhit.sector = get_trigger_sector(fake_ring, fake_station, simhit.chamber)
+            simhit.subsector = get_trigger_subsector(fake_ring, fake_station, simhit.chamber)
+            simhit.cscid = get_trigger_cscid(fake_ring, fake_station, simhit.chamber)
+            simhit.neighid = get_trigger_neighid(fake_ring, fake_station, simhit.chamber)
+          else:
+            simhit.endcap = +1 if simhit.z >= 0 else -1
+            simhit.sector = get_trigger_sector(simhit.ring, simhit.station, simhit.chamber)
+            simhit.subsector = get_trigger_subsector(simhit.ring, simhit.station, simhit.chamber)
+            simhit.cscid = get_trigger_cscid(simhit.ring, simhit.station, simhit.chamber)
+            simhit.neighid = get_trigger_neighid(simhit.ring, simhit.station, simhit.chamber)
+
+          simhit.emtf_phi = calc_phi_loc_int(np.rad2deg(simhit.phi), (best_sector%6) + 1)
+          simhit.emtf_theta = calc_theta_int(np.rad2deg(simhit.theta), 1 if best_sector < 6 else -1)
+
+          simhit.bx, simhit.bend, simhit.quality, simhit.fr, simhit.time = 0, 0, 0, 0, 0  # dummy
+          simhit.neighbor = 0
+
+          # Also need to send to the next sector
+          get_prev_sector = lambda sector: sector - 1 if sector != 1 else 6
+          get_next_sector = lambda sector: sector + 1 if sector != 6 else 1
+          if get_trigger_endsec(simhit.endcap, simhit.sector) == best_sector:
+            chambers_simhits.add(simhit)
+          elif get_trigger_endsec(simhit.endcap, get_next_sector(simhit.sector)) == best_sector:
+            simhit.neighbor = 1
+            chambers_simhits.add(simhit)
+          elif get_trigger_endsec(simhit.endcap, get_prev_sector(simhit.sector)) == best_sector:
+            if simhit.type == kME0 and simhit.emtf_phi >= ((55 + 22) * 60):
+              # Special case for ME0 as there is a 5 deg shift.
+              # The CSC chamber 1 starts at -5 deg, but the ME0 chamber 1 starts at -10 deg.
+              chambers_simhits.add(simhit)
 
       # Fourth, extract the particle and hits
-      # Require at least 2 hits and at least 2 sim hits
-      part_zone = find_particle_zone(part)
-      part_info = [part.invpt, part.eta, part.phi, part.vx, part.vy, part.vz, part.d0,
-                   best_sector, part_zone]
+      def get_part_info():
+        etastar = calc_etastar_from_eta(part.invpt, part.eta, part.phi, part.vx, part.vy, part.vz)
+        part_zone = find_particle_zone(etastar)
+        part_info = [part.invpt, part.eta, part.phi, part.vx, part.vy, part.vz, part.d0, best_sector, part_zone]
+        part_info = np.array(part_info, dtype=np.float32)
+        return part_info
 
-      ievt_part = np.array(part_info, dtype=np.float32)
-      ievt_hits = zones.squeeze()
-      ievt_simhits = zones_simhits.squeeze()
-
-      aset = set()
-      for x in ievt_hits:
-        if x[0] == part_zone:  # x[0] is zone
-          aset.add(x[1])       # x[1] is zone_row
-      if not (len(aset) >= 2): # at least 2 hits
-        continue
-
-      aset.clear()
-      for x in ievt_simhits:
-        if x[0] == part_zone:  # x[0] is zone
-          aset.add(x[1])       # x[1] is zone_row
-      if not (len(aset) >= 2): # at least 2 sim hits
-        continue
+      ievt_part = get_part_info()
+      ievt_hits = chambers.get_hits()
+      ievt_simhits = chambers_simhits.get_hits()
 
       # Finally, add to output
       out_part.append(ievt_part)
@@ -300,15 +304,14 @@ class SignalAnalysis(_BaseAnalysis):
             hit_sim_tp = -1
           print('.. hit {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(ihit, hit_id, hit.emtf_phi, hit.emtf_theta, hit.bend, hit.quality, hit_sim_tp, hit.strip, hit.wire))
         for isimhit, simhit in enumerate(evt.simhits):
-          simhit_id = (simhit.type, simhit.station, simhit.ring, simhit.layer, simhit.chamber)
+          simhit_id = (simhit.type, simhit.station, simhit.ring, get_trigger_endsec(simhit.endcap, simhit.sector), simhit.fr, simhit.bx)
           print('.. simhit {0} {1} {2} {3}'.format(isimhit, simhit_id, simhit.phi, simhit.theta))
-        print('best sector: {0}'.format(best_sector))
-        print('hits:')
-        for x in ievt_hits:
-          print(x)
-        print('simhits:')
-        for x in ievt_simhits:
-          print(x)
+        print('best sector: {0} rank: {1}'.format(best_sector, best_sector_rank))
+        with np.printoptions(linewidth=100, threshold=1000):
+          print('hits:')
+          print(ievt_hits)
+          print('simhits:')
+          print(ievt_simhits)
 
     # End loop over events
 
@@ -342,7 +345,7 @@ class BkgndAnalysis(_BaseAnalysis):
     out_aux = []
     out_hits = []
 
-    sector_zones = [EMTFZoneArtist() for sector in range(num_emtf_sectors)]
+    sector_chambers = [EMTFChamberCouncil() for sector in range(num_emtf_sectors)]
 
     # __________________________________________________________________________
     # Load tree
@@ -358,14 +361,14 @@ class BkgndAnalysis(_BaseAnalysis):
 
       # Reset
       for sector in range(num_emtf_sectors):
-        sector_zones[sector].reset()
+        sector_chambers[sector].reset()
 
       # First, apply event veto
 
       # Particles
       veto = False
       for ipart, part in enumerate(evt.particles):
-        if (part.bx == 0) and (part.pt > 20.) and (find_particle_zone(part) in (0,1,2,3)):
+        if (part.bx == 0) and (part.pt > 14.) and (find_particle_zone(part.eta) in (0,1,2,3)):
           veto = True
           break
       if veto:
@@ -378,14 +381,17 @@ class BkgndAnalysis(_BaseAnalysis):
         for ihit, hit in enumerate(evt.hits):
           if is_emtf_legit_hit(hit) and get_trigger_endsec(hit.endcap, hit.sector) == sector:
             if min_emtf_strip <= hit.emtf_phi < max_emtf_strip:
-              sector_zones[sector].add(hit)
+              sector_chambers[sector].add(hit)
 
-      # Finally, extract the particle and hits, and add them to output
-      for sector in range(num_emtf_sectors):
+      # Finally, extract the particle and hits. Add them to output.
+      def get_aux_info():
         aux_info = [jobid, ievt, sector]
-        ievt_aux = np.array(aux_info, dtype=np.int32)
-        ievt_hits = sector_zones[sector].squeeze()
+        aux_info = np.array(aux_info, dtype=np.int32)
+        return aux_info
 
+      for sector in range(num_emtf_sectors):
+        ievt_aux = get_aux_info()
+        ievt_hits = sector_chambers[sector].get_hits()
         out_aux.append(ievt_aux)
         out_hits.append(ievt_hits)
 
@@ -398,11 +404,11 @@ class BkgndAnalysis(_BaseAnalysis):
           if (hit.type == kCSC) and (hit_sim_tp != hit.sim_tp2):
             hit_sim_tp = -1
           print('.. hit {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(ihit, hit_id, hit.emtf_phi, hit.emtf_theta, hit.bend, hit.quality, hit_sim_tp, hit.strip, hit.wire))
-        print('hits:')
-        for sector in range(num_emtf_sectors):
-          ievt_hits = sector_zones[sector].squeeze()
-          for x in ievt_hits:
-            print(sector, x)
+        with np.printoptions(linewidth=100, threshold=1000):
+          for sector in range(num_emtf_sectors):
+            ievt_hits = sector_chambers[sector].get_hits()
+            print('sector {0} hits:'.format(sector))
+            print(ievt_hits)
 
     # End loop over events
 
@@ -434,6 +440,7 @@ algo = 'default'  # phase 2
 
 # Analysis mode (pick one)
 analysis = 'signal'
+#analysis = 'signal_displ'
 #analysis = 'bkgnd'
 
 # Job id (pick an integer)
@@ -485,7 +492,10 @@ def app():
   # Select analysis
   if analysis == 'signal':
     myapp = SignalAnalysis()
-    myargs = dict(algo=algo)
+    myargs = dict(algo=algo, signal='prompt')
+  elif analysis == 'signal_displ':
+    myapp = SignalAnalysis()
+    myargs = dict(algo=algo, signal='displ')
 
   elif analysis == 'bkgnd':
     myapp = BkgndAnalysis()

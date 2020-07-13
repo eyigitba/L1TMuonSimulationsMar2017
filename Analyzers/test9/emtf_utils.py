@@ -372,6 +372,13 @@ class RaggedTensorValue(object):
       lambda self: self._values.dtype,
       doc="""The numpy dtype of values in this tensor.""")
 
+  row_lengths = property(
+      lambda self: self._row_splits[1:] - self._row_splits[:-1],
+      doc="""The lengths of the rows in this ragged tensor value.""")
+  nrows = property(
+      lambda self: self._row_splits.shape[0] - 1,
+      doc="""The number of rows in this ragged tensor value.""")
+
   @property
   def shape(self):
     """A tuple indicating the shape of this RaggedTensorValue."""
@@ -404,13 +411,13 @@ class RaggedTensorValue(object):
       values_as_list = self._values.tolist()
     return [
         values_as_list[self._row_splits[i]:self._row_splits[i + 1]]
-        for i in range(self._row_splits.shape[0] - 1)
+        for i in range(self.nrows)
     ]
 
   def to_array(self):
     """Returns this ragged tensor value as a nested Numpy array."""
-    arr = np.empty((self._row_splits.shape[0] - 1,), dtype=np.object)
-    for i in range(self._row_splits.shape[0] - 1):
+    arr = np.empty((self.nrows,), dtype=np.object)
+    for i in range(self.nrows):
       arr[i] = self._values[self._row_splits[i]:self._row_splits[i + 1]]
     return arr
 
@@ -439,6 +446,63 @@ def create_ragged_array(pylist):
     row_splits = np.asarray(row_splits, dtype=np.int32)
     values = RaggedTensorValue(values, row_splits)
   return values
+
+def ragged_stack(tup):
+  if not np.all([x.values.ndim > 1 for x in tup]):
+    raise TypeError("ragged values must be at least 2D")
+
+  tup_values = [x.values for x in tup]
+  tup_row_splits = [x.row_splits for x in tup]
+
+  new_values = np.vstack(tup_values)
+  new_row_splits = [0]
+  for row_splits in tup_row_splits:
+    # Ignore the first entry in row_splits, as the first entry is always zero.
+    # Increment all the entries in row_splits by the last value in new_row_splits.
+    new_row_splits.extend(new_row_splits[-1] + row_splits[1:])
+
+  new_values = np.asarray(new_values)
+  new_row_splits = np.asarray(new_row_splits, dtype=np.int32)
+  new_values = RaggedTensorValue(new_values, new_row_splits)
+  return new_values
+
+def ragged_boolean_mask(ragged, mask):
+  if not (isinstance(mask, (np.ndarray, np.generic)) and
+          mask.dtype in (np.bool,) and mask.ndim == 1):
+    raise TypeError("mask must be a 1D bool numpy array")
+  if not isinstance(ragged, (RaggedTensorValue,)):
+    raise TypeError("ragged must be a RaggedTensorValue")
+  if not (ragged.values.shape[0] == mask.shape[0]):
+    raise ValueError("The length of ragged.values must be equal to the length of mask")
+
+  data = ragged.values
+  new_values = data[mask]
+
+  new_row_lengths = np.zeros((ragged.nrows,), dtype=np.int32)
+  for i in range(ragged.nrows):
+    new_row_lengths[i] = np.count_nonzero(mask[ragged.row_splits[i]:ragged.row_splits[i + 1]])
+  new_row_splits = [0]
+  new_row_splits.extend(np.cumsum(new_row_lengths))
+
+  new_values = np.asarray(new_values)
+  new_row_splits = np.asarray(new_row_splits, dtype=np.int32)
+  new_values = RaggedTensorValue(new_values, new_row_splits)
+  return new_values
+
+def ragged_row_boolean_mask(ragged, row_mask):
+  if not (isinstance(row_mask, (np.ndarray, np.generic)) and
+          row_mask.dtype in (np.bool,) and row_mask.ndim == 1):
+    raise TypeError("row_mask must be a 1D bool numpy array")
+  if not isinstance(ragged, (RaggedTensorValue,)):
+    raise TypeError("ragged must be a RaggedTensorValue")
+  if not (ragged.nrows == row_mask.shape[0]):
+    raise ValueError("The number of rows in ragged must be equal to the length of row_mask")
+
+  mask = np.zeros((ragged.values.shape[0],), dtype=np.bool)
+  for i in range(ragged.nrows):
+    mask[ragged.row_splits[i]:ragged.row_splits[i + 1]] = row_mask[i]
+  return ragged_boolean_mask(ragged, mask)
+
 
 # Based on
 #   https://www.tensorflow.org/api_docs/python/tf/sparse/SparseTensor
@@ -496,6 +560,7 @@ def sparse_to_dense(sparse):
   for i in range(len(sparse.indices)):
     dense[tuple(sparse.indices[i])] = sparse.values[i]
   return dense
+
 
 # Copied from https://docs.python.org/2/howto/logging.html
 def get_logger():

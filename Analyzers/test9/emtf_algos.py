@@ -22,6 +22,7 @@ coarse_emtf_strip = 8*2  # 'doublestrip' unit
 
 emtf_eta_bins = (0.8, 1.2, 1.55, 1.98, 2.5)
 
+
 # Encode EMTF layer number
 # Total: 12 (5 from CSC + 4 from RPC + 3 from GEM)
 def find_emtf_layer_initializer():
@@ -131,7 +132,6 @@ def decode_emtf_ri_layer_initializer():
 
 # The initializer will instantiate the lookup tables
 decode_emtf_ri_layer = decode_emtf_ri_layer_initializer()
-
 
 # Encode EMTF chamber number
 # Total: 112 (6*9*2 + 4)
@@ -269,7 +269,6 @@ find_emtf_chamber = find_emtf_chamber_initializer()
 # Decode EMTF chamber number
 def decode_emtf_chamber():
   raise NotImplementedError()
-
 
 # Assign EMTF zones
 def find_emtf_zones_initializer():
@@ -432,7 +431,76 @@ def find_emtf_zo_layer_initializer():
 # The initializer will instantiate the lookup table
 find_emtf_zo_layer = find_emtf_zo_layer_initializer()
 
+# ______________________________________________________________________________
+def find_emtf_phi(hit):
+  #assert (0 <= hit.emtf_phi) and ((hit.type != kDT and hit.emtf_phi < 5000) or (hit.type == kDT))
+  emtf_phi = np.int32(hit.emtf_phi)
+  return emtf_phi
 
+def find_emtf_theta(hit):
+  #assert (hit.emtf_theta > 0)
+  emtf_theta = np.int32(hit.emtf_theta)
+  if hit.type == kDT:
+    # wire -1 means no theta SL
+    # quality 0&1 are RPC digis
+    if (hit.wire == -1) or (hit.quality < 2):
+      if hit.station == 1:
+        emtf_theta = 112
+      elif hit.station == 2:
+        emtf_theta = 122
+      elif hit.station == 3:
+        emtf_theta = 131
+    else:
+      pass
+  else:  # non-DT
+    pass
+  return emtf_theta
+
+def find_emtf_bend(hit):
+  emtf_bend = np.int32(hit.bend)
+  if hit.type == kCSC:
+    # Special case for ME1/1a:
+    # rescale the bend to the same scale as ME1/1b
+    if hit.station == 1 and hit.ring == 4:
+      emtf_bend = np.round(emtf_bend.astype(np.float32) * 0.026331/0.014264).astype(np.int32)
+      emtf_bend = np.clip(emtf_bend, -32, 31)
+    emtf_bend *= hit.endcap
+    emtf_bend = np.round(emtf_bend.astype(np.float32) * 0.5001).astype(np.int32)  # from 1/32-strip unit to 1/16-strip unit
+    emtf_bend = np.clip(emtf_bend, -16, 15)
+  elif hit.type == kME0:
+    emtf_bend = np.round(emtf_bend.astype(np.float32) * 0.5001).astype(np.int32)  # from 1/4-strip unit to 1/2-strip unit
+    emtf_bend = np.clip(emtf_bend, -64, 63)
+  elif hit.type == kDT:
+    if hit.quality >= 4:
+      emtf_bend = np.clip(emtf_bend, -512, 511)
+    else:
+      #emtf_bend = np.int32(0)
+      emtf_bend = np.clip(emtf_bend, -512, 511)
+  else:  # kRPC, kGEM
+    emtf_bend = np.int32(0)
+  return emtf_bend
+
+def find_emtf_qual(hit):
+  emtf_qual = np.int32(hit.quality)
+  if hit.type == kCSC or hit.type == kME0:
+    # front chamber -> +1
+    # rear chamber  -> -1
+    if int(hit.fr) == 1:
+      emtf_qual *= +1
+    else:
+      emtf_qual *= -1
+  elif hit.type == kRPC or hit.type == kGEM:
+    emtf_qual = np.int32(0)
+  else:  # kDT
+    pass
+  return emtf_qual
+
+def find_emtf_time(hit):
+  emtf_time = np.int32(hit.time)
+  emtf_time = np.clip(emtf_time, -8, 7)
+  return emtf_time
+
+# ______________________________________________________________________________
 # Check whether hit is very legal and very cool
 def is_emtf_legit_hit(hit):
   def check_type(hit):
@@ -443,7 +511,12 @@ def is_emtf_legit_hit(hit):
       if hit.type == kME0 or hit.type == kDT:
         return hit.emtf_phi > 0
     return True
-  return check_type(hit) and check_phi(hit)
+  def check_theta(hit):
+    if hasattr(hit, 'emtf_theta'):
+      if hit.type == kME0:
+        return hit.emtf_theta > 0
+    return True
+  return check_type(hit) and check_phi(hit) and check_theta(hit)
 
 # Check whether hit is very legal and very cool for Run 2
 def is_emtf_legit_hit_run2(hit):
@@ -458,4 +531,15 @@ def is_emtf_legit_hit_run2(hit):
       if hit.type == kME0 or hit.type == kDT:
         return hit.emtf_phi > 0
     return True
-  return check_type(hit) and check_phi(hit)
+  def check_theta(hit):
+    if hasattr(hit, 'emtf_theta'):
+      if hit.type == kME0:
+        return hit.emtf_theta > 0
+    return True
+  return check_type(hit) and check_phi(hit) and check_theta(hit)
+
+# ______________________________________________________________________________
+# Find particle zone based on eta
+def find_particle_zone(eta):
+  ind = np.searchsorted(emtf_eta_bins, np.abs(eta))
+  return (len(emtf_eta_bins)-1) - ind  # ind = (1,2,3,4) -> zone (3,2,1,0)

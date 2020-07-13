@@ -72,13 +72,6 @@ class ZoneAnalysis(_BaseAnalysis):
     # Overwrite maxevents
     maxevents = -1
 
-    # Overwrite eta bins
-    eta_bins = (0.8, 1.2, 1.55, 1.98, 2.5)
-
-    def find_particle_zone_quick(eta):
-      ind = np.searchsorted(eta_bins, np.abs(eta))
-      return (len(eta_bins)-1) - ind  # ind = (1,2,3,4) -> zone (3,2,1,0)
-
     out_hits = []
     out_hits_metadata = {'type': 0, 'station': 1, 'ring': 2, 'zone': 3, 'emtf_theta': 4}
 
@@ -97,7 +90,7 @@ class ZoneAnalysis(_BaseAnalysis):
         continue
 
       # Find particle zone
-      zone = find_particle_zone_quick(part.eta)
+      zone = find_particle_zone(part.eta)
 
       # Trigger primitives
       for ihit, hit in enumerate(evt.hits):
@@ -119,7 +112,7 @@ class ZoneAnalysis(_BaseAnalysis):
     assert (out_hits_ri_layers != -99).all()
 
     print('Find zone boundaries')
-    n_zones = len(eta_bins) - 1
+    n_zones = len(emtf_eta_bins) - 1
     for zone in range(n_zones):
       sel = (out_hits_zone == zone)
       out_hits_ri_layers_sel = out_hits_ri_layers[sel]
@@ -171,21 +164,22 @@ class ChamberAnalysis(_BaseAnalysis):
       # Sim hits
       for isimhit, simhit in enumerate(evt.simhits):
         if is_emtf_legit_hit(simhit):
-          simhit.bx = 0
-          simhit.endcap = +1 if simhit.z >= 0 else -1
           if simhit.type == kME0:
             # Special case for ME0 as it is a 20-deg chamber. Pretend it is ME2/1 when calling these functions.
             fake_station, fake_ring = 2, 1
+            simhit.endcap = +1 if simhit.z >= 0 else -1
             simhit.sector = get_trigger_sector(fake_ring, fake_station, simhit.chamber)
             simhit.subsector = get_trigger_subsector(fake_ring, fake_station, simhit.chamber)
             simhit.cscid = get_trigger_cscid(fake_ring, fake_station, simhit.chamber)
             simhit.neighid = get_trigger_neighid(fake_ring, fake_station, simhit.chamber)
           else:
+            simhit.endcap = +1 if simhit.z >= 0 else -1
             simhit.sector = get_trigger_sector(simhit.ring, simhit.station, simhit.chamber)
             simhit.subsector = get_trigger_subsector(simhit.ring, simhit.station, simhit.chamber)
             simhit.cscid = get_trigger_cscid(simhit.ring, simhit.station, simhit.chamber)
             simhit.neighid = get_trigger_neighid(simhit.ring, simhit.station, simhit.chamber)
 
+          simhit.bx = 0
           simhit.neighbor = 0
           out_simhits.append([simhit.type, simhit.station, get_trigger_endsec(simhit.endcap, simhit.sector), simhit.subsector, simhit.cscid, simhit.neighbor, simhit.bx, ievt])
 
