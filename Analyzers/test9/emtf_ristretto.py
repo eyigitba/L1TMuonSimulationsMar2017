@@ -22,7 +22,7 @@ class EMTFSectorRanking(object):
 
   def add(self, hit):
     ri_layer = find_emtf_ri_layer(hit.type, hit.station, hit.ring)
-    assert (0 <= ri_layer and ri_layer <= 18)
+    assert (0 <= ri_layer and ri_layer < 19)
     ri_layer_valid = np.zeros(8, dtype=np.bool)
     ri_layer_valid[0] = (ri_layer == 18)              # ME0
     ri_layer_valid[1] = (ri_layer == 0)               # ME1/1
@@ -32,7 +32,7 @@ class EMTFSectorRanking(object):
     ri_layer_valid[5] = (ri_layer in (7,8))           # ME4/1, ME4/2
     ri_layer_valid[6] = (ri_layer in (9,10,11,12,13)) # GE1/1, RE1/2, GE2/1, RE2/2
     ri_layer_valid[7] = (ri_layer in (14,15,16,17))   # RE3/1, RE3/2, RE4/1, RE4/2
-    rank = np.packbits(ri_layer_valid)
+    rank = np.packbits(ri_layer_valid)                # pack 8 booleans into an uint8
 
     endsec = get_trigger_endsec(hit.endcap, hit.sector)
     self.sectors[endsec] |= rank
@@ -129,6 +129,7 @@ class EMTFChamberCouncil(object):
       (bx, emtf_chamber) = k
       tmp_hits = self.chambers[k]
 
+      # For CSC, remove the "ghosts" and keep only 2 LCTs per chamber
       if emtf_chamber < 54:  # CSC
         assert len(tmp_hits) in (1,2,4)
         emtf_phi_a = np.min([hit.emtf_phi for hit in tmp_hits])
@@ -152,6 +153,20 @@ class EMTFChamberCouncil(object):
             hits.append(hit)
 
       else:  # non-CSC
+        if emtf_chamber in (108,109,110,111):         # ME0
+          assert len(tmp_hits) <= 20
+        elif emtf_chamber in (54,55,56,63,64,65,99):  # GE1/1
+          assert len(tmp_hits) <= 8
+        elif emtf_chamber in (72,73,74,102):          # GE2/1
+          assert len(tmp_hits) <= 8
+        elif emtf_chamber in (81,82,83,104):          # RE3/1
+          assert len(tmp_hits) <= 4
+        elif emtf_chamber in (90,91,92,106):          # RE4/1
+          assert len(tmp_hits) <= 4
+        elif (75 <= emtf_chamber <= 98) or emtf_chamber in (103,105,107):  # RE2,3,4/2
+          assert len(tmp_hits) <= 4
+        else:                                         # RE1/2, RE1/3
+          assert len(tmp_hits) <= 2
         emtf_segment = 0
         for hit in tmp_hits:
           hit.emtf_segment = emtf_segment
@@ -233,8 +248,7 @@ class SignalAnalysis(_BaseAnalysis):
       # Trigger primitives
       for ihit, hit in enumerate(evt.hits):
         if is_emtf_legit_hit(hit) and get_trigger_endsec(hit.endcap, hit.sector) == best_sector:
-          if min_emtf_strip <= hit.emtf_phi < max_emtf_strip:
-            chambers.add(hit)
+          chambers.add(hit)
 
       # Third, fill the chambers with sim hits
 
@@ -288,6 +302,18 @@ class SignalAnalysis(_BaseAnalysis):
       ievt_hits = chambers.get_hits()
       ievt_simhits = chambers_simhits.get_hits()
 
+      # Fifth, check for at least 2 stations (using sim hits)
+      require_two_stations = True
+
+      if require_two_stations:
+        _stations = [hit.station for tmp_hits in six.itervalues(chambers_simhits.chambers) for hit in tmp_hits]
+        min_station = np.min(_stations) if len(_stations) else 5
+        max_station = np.max(_stations) if len(_stations) else 0
+        keep = ((min_station <= 1 and max_station >= 2) or (min_station <= 2 and max_station >= 3))
+        if not keep:
+          ievt_hits = np.array([], dtype=np.int32)
+          ievt_simhits = np.array([], dtype=np.int32)
+
       # Finally, add to output
       out_part.append(ievt_part)
       out_hits.append(ievt_hits)
@@ -304,8 +330,11 @@ class SignalAnalysis(_BaseAnalysis):
             hit_sim_tp = -1
           print('.. hit {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(ihit, hit_id, hit.emtf_phi, hit.emtf_theta, hit.bend, hit.quality, hit_sim_tp, hit.strip, hit.wire))
         for isimhit, simhit in enumerate(evt.simhits):
-          simhit_id = (simhit.type, simhit.station, simhit.ring, get_trigger_endsec(simhit.endcap, simhit.sector), simhit.fr, simhit.bx)
-          print('.. simhit {0} {1} {2} {3}'.format(isimhit, simhit_id, simhit.phi, simhit.theta))
+          try:
+            simhit_id = (simhit.type, simhit.station, simhit.ring, get_trigger_endsec(simhit.endcap, simhit.sector), simhit.fr, simhit.bx)
+            print('.. simhit {0} {1} {2} {3}'.format(isimhit, simhit_id, simhit.phi, simhit.theta))
+          except:
+            pass
         print('best sector: {0} rank: {1}'.format(best_sector, best_sector_rank))
         with np.printoptions(linewidth=100, threshold=1000):
           print('hits:')
@@ -380,8 +409,7 @@ class BkgndAnalysis(_BaseAnalysis):
       for sector in range(num_emtf_sectors):
         for ihit, hit in enumerate(evt.hits):
           if is_emtf_legit_hit(hit) and get_trigger_endsec(hit.endcap, hit.sector) == sector:
-            if min_emtf_strip <= hit.emtf_phi < max_emtf_strip:
-              sector_chambers[sector].add(hit)
+            sector_chambers[sector].add(hit)
 
       # Finally, extract the particle and hits. Add them to output.
       def get_aux_info():

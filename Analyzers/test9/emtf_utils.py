@@ -498,10 +498,20 @@ def ragged_row_boolean_mask(ragged, row_mask):
   if not (ragged.nrows == row_mask.shape[0]):
     raise ValueError("The number of rows in ragged must be equal to the length of row_mask")
 
+  data = ragged.values
   mask = np.zeros((ragged.values.shape[0],), dtype=np.bool)
   for i in range(ragged.nrows):
     mask[ragged.row_splits[i]:ragged.row_splits[i + 1]] = row_mask[i]
-  return ragged_boolean_mask(ragged, mask)
+  new_values = data[mask]
+
+  new_row_lengths = ragged.row_lengths[row_mask]
+  new_row_splits = [0]
+  new_row_splits.extend(np.cumsum(new_row_lengths))
+
+  new_values = np.asarray(new_values)
+  new_row_splits = np.asarray(new_row_splits, dtype=np.int32)
+  new_values = RaggedTensorValue(new_values, new_row_splits)
+  return new_values
 
 
 # Based on
