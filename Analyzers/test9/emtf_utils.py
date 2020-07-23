@@ -350,10 +350,10 @@ class RaggedTensorValue(object):
       values: A numpy array of any type and shape; or a RaggedTensorValue.
       row_splits: A 1-D int32 or int64 numpy array.
     """
-    if not (isinstance(row_splits, (np.ndarray, np.generic)) and
+    if not (isinstance(row_splits[:1], (np.ndarray, np.generic)) and
             row_splits.dtype in (np.int64, np.int32) and row_splits.ndim == 1):
       raise TypeError("row_splits must be a 1D int32 or int64 numpy array")
-    if not isinstance(values, (np.ndarray, np.generic, RaggedTensorValue)):
+    if not isinstance(values[:1], (np.ndarray, np.generic, RaggedTensorValue)):
       raise TypeError("values must be a numpy array or a RaggedTensorValue")
     if (isinstance(values, RaggedTensorValue) and
         row_splits.dtype != values.row_splits.dtype):
@@ -467,7 +467,7 @@ def ragged_stack(tup):
   return new_values
 
 def ragged_boolean_mask(ragged, mask):
-  if not (isinstance(mask, (np.ndarray, np.generic)) and
+  if not (isinstance(mask[:1], (np.ndarray, np.generic)) and
           mask.dtype in (np.bool,) and mask.ndim == 1):
     raise TypeError("mask must be a 1D bool numpy array")
   if not isinstance(ragged, (RaggedTensorValue,)):
@@ -490,7 +490,7 @@ def ragged_boolean_mask(ragged, mask):
   return new_values
 
 def ragged_row_boolean_mask(ragged, row_mask):
-  if not (isinstance(row_mask, (np.ndarray, np.generic)) and
+  if not (isinstance(row_mask[:1], (np.ndarray, np.generic)) and
           row_mask.dtype in (np.bool,) and row_mask.ndim == 1):
     raise TypeError("row_mask must be a 1D bool numpy array")
   if not isinstance(ragged, (RaggedTensorValue,)):
@@ -529,11 +529,14 @@ class SparseTensorValue(object):
       values: A 1-D tensor of any type and shape `[N]`.
       dense_shape: A 1-D int64 tensor of shape `[ndims]`.
     """
-    if not (isinstance(indices, (np.ndarray, np.generic)) and
+    if not (isinstance(indices[:1], (np.ndarray, np.generic)) and
             indices.dtype in (np.int64, np.int32) and indices.ndim == 2):
       raise TypeError("indices must be a 2D int32 or int64 numpy array")
-    if not isinstance(values, (np.ndarray, np.generic)):
-      raise TypeError("values must be a numpy array")
+    if not (isinstance(values[:1], (np.ndarray, np.generic)) and values.ndim == 1):
+      raise TypeError("values must be a 1D numpy array")
+    if not (isinstance(dense_shape[:1], (np.ndarray, np.generic)) and
+            dense_shape.dtype in (np.int64, np.int32) and dense_shape.ndim == 1):
+      raise TypeError("dense_shape must be a 1D int32 or int64 numpy array")
     self._indices = indices
     self._values = values
     self._dense_shape = dense_shape
@@ -548,10 +551,10 @@ class SparseTensorValue(object):
       lambda self: self._values.dtype,
       doc="""The numpy dtype of values in this tensor.""")
   dense_shape = property(
-      lambda self: self._dense_shape,
+      lambda self: tuple(self._dense_shape),
       doc="""A tuple representing the shape of the dense tensor.""")
   shape = property(
-      lambda self: self._dense_shape,
+      lambda self: tuple(self._dense_shape),
       doc="""A tuple representing the shape of the dense tensor.""")
 
   def __repr__(self):
@@ -562,13 +565,14 @@ def dense_to_sparse(dense):
   dense = np.asarray(dense)
   indices = np.argwhere(dense)
   values = dense[dense.nonzero()]
-  dense_shape = dense.shape
+  dense_shape = np.asarray(dense.shape)
   return SparseTensorValue(indices=indices, values=values, dense_shape=dense_shape)
 
 def sparse_to_dense(sparse):
+  ndims = sparse.indices.shape[1]
+  tup = tuple(sparse.indices[:, i] for i in range(ndims))
   dense = np.zeros(sparse.dense_shape, dtype=sparse.dtype)
-  for i in range(len(sparse.indices)):
-    dense[tuple(sparse.indices[i])] = sparse.values[i]
+  dense[tup] = sparse.values
   return dense
 
 

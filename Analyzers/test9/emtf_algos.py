@@ -431,6 +431,15 @@ def find_emtf_zo_layer_initializer():
 # The initializer will instantiate the lookup table
 find_emtf_zo_layer = find_emtf_zo_layer_initializer()
 
+zo_layer_labels = [
+  ['ME0'  , 'GE1/1', 'ME1/1', 'GE2/1', 'ME2/1', 'ME3/1', 'RE3/1', 'ME4/1'],
+  ['GE1/1', 'ME1/1', 'ME1/2', 'GE2/1', 'ME2/1', 'ME3/1', 'RE3/1', 'ME4/1'],
+  ['ME1/2', 'RE1/2', 'RE2/2', 'ME2/2', 'ME3/2', 'RE3/2', 'ME4/2', 'RE4/2'],
+]
+
+def find_emtf_zo_phi(emtf_phi):
+  return (emtf_phi - min_emtf_strip) // coarse_emtf_strip
+
 # ______________________________________________________________________________
 def find_emtf_phi(hit):
   #assert (0 <= hit.emtf_phi) and ((hit.type != kDT and hit.emtf_phi < 5000) or (hit.type == kDT))
