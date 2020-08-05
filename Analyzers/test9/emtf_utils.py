@@ -102,7 +102,7 @@ def calc_theta_deg_from_eta(eta):
   return np.rad2deg(calc_theta_rad_from_eta(eta))
 
 def calc_theta_deg_from_int(theta_int):
-  theta_deg = float(theta_int) * (45.0-8.5) / 128. + 8.5;
+  theta_deg = float(theta_int) * (45.0-8.5) / 128. + 8.5
   return theta_deg
 
 def calc_eta_from_theta_rad(theta_rad):
@@ -203,25 +203,25 @@ def calc_etastar_from_eta(invpt, eta, phi, x0, y0, z0, zstar=850., zstar_4T=650.
   R = -1.0 / (0.003 * B * invpt)  # R = -pT/(0.003 q B)  [cm], radius of the circle
   cot = np.sinh(eta)              # cot(theta), which is pz/pt
   if np.abs(zstar_4T) < np.abs(zstar):
-    arg_term_4T = np.abs((zstar_4T - z0)/cot)                 # with magfield
-    sin_term_4T = (2 * R) * np.sin(arg_term_4T/(2 * R))       # with magfield
-    cos_term_4T = (2 * R) * (1 - np.cos(arg_term_4T/(2 * R))) # with magfield
-    arg_term_0T = np.abs((zstar - zstar_4T)/cot)              # without magfield
-    sin_term_0T = arg_term_0T                                 # without magfield
-    cos_term_0T = 0                                           # without magfield
+    arg_term_4T = np.abs((zstar_4T - z0)/cot)                  # with magfield
+    sin_term_4T = (2 * R) * np.sin(arg_term_4T/(2 * R))        # with magfield
+    cos_term_4T = (2 * R) * (1 - np.cos(arg_term_4T/(2 * R)))  # with magfield
+    arg_term_0T = np.abs((zstar - zstar_4T)/cot)               # without magfield
+    sin_term_0T = arg_term_0T                                  # without magfield
+    cos_term_0T = 0                                            # without magfield
   else:
     # Also need to check for the boundary at r where 4T -> 0T, ignore for now
-    arg_term_4T = np.abs((zstar - z0)/cot)                    # with magfield
-    sin_term_4T = (2 * R) * np.sin(arg_term_4T/(2 * R))       # with magfield
-    cos_term_4T = (2 * R) * (1 - np.cos(arg_term_4T/(2 * R))) # with magfield
-    arg_term_0T = 0                                           # without magfield
-    sin_term_0T = 0                                           # without magfield
-    cos_term_0T = 0                                           # without magfield
+    arg_term_4T = np.abs((zstar - z0)/cot)                     # with magfield
+    sin_term_4T = (2 * R) * np.sin(arg_term_4T/(2 * R))        # with magfield
+    cos_term_4T = (2 * R) * (1 - np.cos(arg_term_4T/(2 * R)))  # with magfield
+    arg_term_0T = 0                                            # without magfield
+    sin_term_0T = 0                                            # without magfield
+    cos_term_0T = 0                                            # without magfield
   phistar_4T = phi + arg_term_4T/(2 * R)  # phi at the boundary where 4T -> 0T
   xstar = x0 + np.cos(phi) * sin_term_4T - np.sin(phi) * cos_term_4T + \
-          np.cos(phistar_4T) * sin_term_0T - np.sin(phistar_4T) * cos_term_0T
+      np.cos(phistar_4T) * sin_term_0T - np.sin(phistar_4T) * cos_term_0T
   ystar = y0 + np.sin(phi) * sin_term_4T + np.cos(phi) * cos_term_4T + \
-          np.sin(phistar_4T) * sin_term_0T + np.cos(phistar_4T) * cos_term_0T
+      np.sin(phistar_4T) * sin_term_0T + np.cos(phistar_4T) * cos_term_0T
   rstar = np.hypot(xstar, ystar)
   cotstar = zstar/rstar
   etastar = np.arcsinh(cotstar)
@@ -574,33 +574,3 @@ def sparse_to_dense(sparse):
   dense = np.zeros(sparse.dense_shape, dtype=sparse.dtype)
   dense[tup] = sparse.values
   return dense
-
-
-# Copied from https://docs.python.org/2/howto/logging.html
-def get_logger():
-  import logging
-
-  # create logger
-  logger = logging.getLogger('test9')
-  logger.setLevel(logging.DEBUG)
-
-  # create file handler which logs even debug messages
-  fh = logging.FileHandler('test9.log')
-  fh.setLevel(logging.DEBUG)
-
-  # create console handler with a higher log level
-  ch = logging.StreamHandler()
-  ch.setLevel(logging.INFO)
-
-  # create formatter and add it to the handlers
-  #formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-  formatter = logging.Formatter('%(asctime)s [%(levelname)-8s] %(message)s')
-  fh.setFormatter(formatter)
-  formatter = logging.Formatter('[%(levelname)-8s] %(message)s')
-  ch.setFormatter(formatter)
-
-  # add the handlers to the logger
-  if not len(logger.handlers):
-    logger.addHandler(fh)
-    logger.addHandler(ch)
-  return logger

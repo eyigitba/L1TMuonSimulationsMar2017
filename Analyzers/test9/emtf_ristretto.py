@@ -24,15 +24,15 @@ class EMTFSectorRanking(object):
     ri_layer = find_emtf_ri_layer(hit.type, hit.station, hit.ring)
     assert (0 <= ri_layer and ri_layer < 19)
     ri_layer_valid = np.zeros(8, dtype=np.bool)
-    ri_layer_valid[0] = (ri_layer == 18)              # ME0
-    ri_layer_valid[1] = (ri_layer == 0)               # ME1/1
-    ri_layer_valid[2] = (ri_layer in (1,2))           # ME1/2, ME1/3
-    ri_layer_valid[3] = (ri_layer in (3,4))           # ME2/1, ME2/2
-    ri_layer_valid[4] = (ri_layer in (5,6))           # ME3/1, ME3/2
-    ri_layer_valid[5] = (ri_layer in (7,8))           # ME4/1, ME4/2
-    ri_layer_valid[6] = (ri_layer in (9,10,11,12,13)) # GE1/1, RE1/2, GE2/1, RE2/2
-    ri_layer_valid[7] = (ri_layer in (14,15,16,17))   # RE3/1, RE3/2, RE4/1, RE4/2
-    rank = np.packbits(ri_layer_valid)                # pack 8 booleans into an uint8
+    ri_layer_valid[0] = (ri_layer == 18)               # ME0
+    ri_layer_valid[1] = (ri_layer == 0)                # ME1/1
+    ri_layer_valid[2] = (ri_layer in (1,2))            # ME1/2, ME1/3
+    ri_layer_valid[3] = (ri_layer in (3,4))            # ME2/1, ME2/2
+    ri_layer_valid[4] = (ri_layer in (5,6))            # ME3/1, ME3/2
+    ri_layer_valid[5] = (ri_layer in (7,8))            # ME4/1, ME4/2
+    ri_layer_valid[6] = (ri_layer in (9,10,11,12,13))  # GE1/1, RE1/2, GE2/1, RE2/2
+    ri_layer_valid[7] = (ri_layer in (14,15,16,17))    # RE3/1, RE3/2, RE4/1, RE4/2
+    rank = np.packbits(ri_layer_valid)                 # pack 8 booleans into an uint8
 
     endsec = get_trigger_endsec(hit.endcap, hit.sector)
     self.sectors[endsec] |= rank
@@ -353,14 +353,14 @@ class SignalAnalysis(_BaseAnalysis):
     out_hits = create_ragged_array(out_hits)
     out_simhits = create_ragged_array(out_simhits)
     print('[INFO] out_part: {0} out_hits: {1} out_simhits: {2}'.format(out_part.shape, out_hits.shape, out_simhits.shape))
-    out_dict = {
+    outdict = {
       'out_part': out_part,
       'out_hits_values': out_hits.values,
       'out_hits_row_splits': out_hits.row_splits,
       'out_simhits_values': out_simhits.values,
       'out_simhits_row_splits': out_simhits.row_splits,
     }
-    save_np_arrays(outfile, out_dict)
+    save_np_arrays(outfile, outdict)
     return
 
 # ______________________________________________________________________________
@@ -448,12 +448,12 @@ class BkgndAnalysis(_BaseAnalysis):
     out_aux = np.asarray(out_aux)
     out_hits = create_ragged_array(out_hits)
     print('[INFO] out_hits: {0}'.format(out_hits.shape))
-    out_dict = {
+    outdict = {
       'out_aux': out_aux,
       'out_hits_values': out_hits.values,
       'out_hits_row_splits': out_hits.row_splits,
     }
-    save_np_arrays(outfile, out_dict)
+    save_np_arrays(outfile, outdict)
     return
 
 

@@ -107,4 +107,3 @@ def load_mumu_flatpt_batch(k, pileup=200):
   infile = infiles[k]
   tree = load_tree(infile)
   return tree
-
