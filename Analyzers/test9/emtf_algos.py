@@ -17,8 +17,8 @@ num_emtf_sectors = 12
 # Full range of emtf_phi is assumed to be 0..5040 (0..84 deg).
 # 84 deg from 60 (native) + 20 (neighbor) + 2 (tolerance, left) + 2 (tolerance, right).
 coarse_emtf_strip = 8 * 2  # 'doublestrip' unit
-num_coarse_emtf_strips = 300  # num of doublestrip units to allocate
-min_emtf_strip = 15 * coarse_emtf_strip  # 4 deg
+num_coarse_emtf_strips = 288  # num of doublestrip units to allocate
+min_emtf_strip = (315 - num_coarse_emtf_strips) * coarse_emtf_strip  # 7.2 deg
 max_emtf_strip = 315 * coarse_emtf_strip  # 84 deg
 
 emtf_eta_bins = (0.8, 1.2, 1.55, 1.98, 2.5)
@@ -439,6 +439,7 @@ zo_layer_labels = [
 ]
 
 def find_emtf_zo_phi(emtf_phi):
+  emtf_phi = np.asarray(emtf_phi)
   return (emtf_phi - min_emtf_strip) // coarse_emtf_strip
 
 # ______________________________________________________________________________
