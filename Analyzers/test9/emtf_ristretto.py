@@ -63,6 +63,10 @@ class EMTFChamberCouncil(object):
     except:
       detlayer = 0
 
+    assert(emtf_layer != -99)
+    assert(ri_layer != -99)
+    assert(emtf_chamber != -99)
+
     emtf_phi = find_emtf_phi(hit)
     emtf_theta = find_emtf_theta(hit)
     emtf_theta_alt = emtf_theta
@@ -153,8 +157,10 @@ class EMTFChamberCouncil(object):
             hits.append(hit)
 
       else:  # non-CSC
-        if emtf_chamber in (108,109,110,111):         # ME0
-          assert len(tmp_hits) <= 20
+        if emtf_chamber in (108,109,110,111,112,113,114):  # ME0
+          #assert len(tmp_hits) <= 20
+          if not len(tmp_hits) <= 20:
+            print('[WARNING] emtf_chamber {0} has {1} hits'.format(emtf_chamber, len(tmp_hits)))
         elif emtf_chamber in (54,55,56,63,64,65,99):  # GE1/1
           assert len(tmp_hits) <= 8
         elif emtf_chamber in (72,73,74,102):          # GE2/1
@@ -239,6 +245,9 @@ class SignalAnalysis(_BaseAnalysis):
       # Trigger primitives
       for ihit, hit in enumerate(evt.hits):
         if is_emtf_legit_hit(hit):
+          if hit.type == kME0:
+            # Special case for ME0 as it is a 20-deg chamber in station 1
+            hack_me0_hit_chamber(hit)
           sectors.add(hit)
 
       (best_sector, best_sector_rank) = sectors.get_best_sector()
@@ -254,40 +263,38 @@ class SignalAnalysis(_BaseAnalysis):
 
       # Sim hits
       for isimhit, simhit in enumerate(evt.simhits):
+        simhit.endcap = +1 if simhit.z >= 0 else -1
         if is_emtf_legit_hit(simhit):
           if simhit.type == kME0:
-            # Special case for ME0 as it is a 20-deg chamber. Pretend it is ME2/1 when calling these functions.
-            fake_station, fake_ring = 2, 1
-            simhit.endcap = +1 if simhit.z >= 0 else -1
-            simhit.sector = get_trigger_sector(fake_ring, fake_station, simhit.chamber)
-            simhit.subsector = get_trigger_subsector(fake_ring, fake_station, simhit.chamber)
-            simhit.cscid = get_trigger_cscid(fake_ring, fake_station, simhit.chamber)
-            simhit.neighid = get_trigger_neighid(fake_ring, fake_station, simhit.chamber)
-          else:
-            simhit.endcap = +1 if simhit.z >= 0 else -1
-            simhit.sector = get_trigger_sector(simhit.ring, simhit.station, simhit.chamber)
-            simhit.subsector = get_trigger_subsector(simhit.ring, simhit.station, simhit.chamber)
-            simhit.cscid = get_trigger_cscid(simhit.ring, simhit.station, simhit.chamber)
-            simhit.neighid = get_trigger_neighid(simhit.ring, simhit.station, simhit.chamber)
+            # Special case for ME0 as it is a 20-deg chamber in station 1
+            hack_me0_hit_chamber(simhit)
 
           simhit.emtf_phi = calc_phi_loc_int(np.rad2deg(simhit.phi), (best_sector%6) + 1)
           simhit.emtf_theta = calc_theta_int(np.rad2deg(simhit.theta), 1 if best_sector < 6 else -1)
 
+          simhit.sector = get_trigger_sector(simhit.ring, simhit.station, simhit.chamber)
+          simhit.subsector = get_trigger_subsector(simhit.ring, simhit.station, simhit.chamber)
+          simhit.cscid = get_trigger_cscid(simhit.ring, simhit.station, simhit.chamber)
+          simhit.neighid = get_trigger_neighid(simhit.ring, simhit.station, simhit.chamber)
           simhit.bx, simhit.bend, simhit.quality, simhit.fr, simhit.time = 0, 0, 0, 0, 0  # dummy
-          simhit.neighbor = 0
 
-          # Also need to send to the next sector
+          # If neighbor, share simhit with the neighbor sector
           get_prev_sector = lambda sector: sector - 1 if sector != 1 else 6
           get_next_sector = lambda sector: sector + 1 if sector != 6 else 1
           if get_trigger_endsec(simhit.endcap, simhit.sector) == best_sector:
+            simhit.neighbor = 0
             chambers_simhits.add(simhit)
           elif get_trigger_endsec(simhit.endcap, get_next_sector(simhit.sector)) == best_sector:
-            simhit.neighbor = 1
-            chambers_simhits.add(simhit)
+            if simhit.neighid == 1:
+              simhit.neighbor = 1
+              simhit.sector = get_next_sector(simhit.sector)
+              chambers_simhits.add(simhit)
           elif get_trigger_endsec(simhit.endcap, get_prev_sector(simhit.sector)) == best_sector:
             if simhit.type == kME0 and simhit.emtf_phi >= ((55 + 22) * 60):
               # Special case for ME0 as there is a 5 deg shift.
               # The CSC chamber 1 starts at -5 deg, but the ME0 chamber 1 starts at -10 deg.
+              simhit.neighbor = 0
+              simhit.sector = get_prev_sector(simhit.sector)
               chambers_simhits.add(simhit)
 
       # Fourth, extract the particle and hits

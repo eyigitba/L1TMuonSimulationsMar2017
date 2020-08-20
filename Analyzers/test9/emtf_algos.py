@@ -13,6 +13,8 @@ from emtf_utils import *
 # Classes
 
 num_emtf_sectors = 12
+num_emtf_zones = 3
+num_emtf_timezones = 3
 
 # Full range of emtf_phi is assumed to be 0..5040 (0..84 deg).
 # 84 deg from 60 (native) + 20 (neighbor) + 2 (tolerance, left) + 2 (tolerance, right).
@@ -124,15 +126,57 @@ def decode_emtf_ri_layer_initializer():
   lut_1 = np.array([1, 1, 1, 2, 2, 3, 3, 4, 4, 1, 1, 1, 2, 2, 3, 3, 4, 4, 1])  # exact
   lut_2 = np.array([1, 2, 3, 1, 2, 1, 2, 1, 2, 1, 2, 3, 1, 2, 1, 2, 1, 2, 1])  # inexact
 
-  def lookup(emtf_layer):
-    _type = np.take(lut_0, emtf_layer)
-    station = np.take(lut_1, emtf_layer)
-    ring = np.take(lut_2, emtf_layer)
+  def lookup(ri_layer):
+    _type = np.take(lut_0, ri_layer)
+    station = np.take(lut_1, ri_layer)
+    ring = np.take(lut_2, ri_layer)
     return (_type, station, ring)
   return lookup
 
 # The initializer will instantiate the lookup tables
 decode_emtf_ri_layer = decode_emtf_ri_layer_initializer()
+
+# Hack ME0 chamber number
+# Converting from 20-deg chamber into 10-deg chamber
+def hack_me0_hit_chamber(hit):
+  if hit.type == kME0:
+    old_chamber = hit.chamber
+    new_chamber = (old_chamber - 1) * 2 + 2
+    if hit.endcap == 1:  # positive endcap
+      try:
+        if hit.strip <= 191:  # first 5 deg (1/4 of chamber)
+          pass
+        elif 191 < hit.strip < (767 - 192):  # next 10 deg (1/2 of chamber)
+          new_chamber -= 1
+        elif hit.strip >= (767 - 192):  # last 10 deg (1/4 of chamber)
+          new_chamber -= 2
+      except:
+        pass
+    else:  # negative endcap
+      try:
+        if hit.strip >= (767 - 192):  # first 5 deg (1/4 of chamber)
+          pass
+        elif 191 < hit.strip < (767 - 192):  # next 10 deg (1/2 of chamber)
+          new_chamber -= 1
+        elif hit.strip <= 191:  # first 5 deg (1/4 of chamber)
+          new_chamber -= 2
+      except:
+        pass
+    if new_chamber == 0:
+      new_chamber = 36
+
+    # Overwrite chamber, sector, subsector, cscid
+    hit.chamber = new_chamber
+    hit.sector = get_trigger_sector(hit.ring, hit.station, hit.chamber)
+    hit.subsector = get_trigger_subsector(hit.ring, hit.station, hit.chamber)
+    hit.cscid = get_trigger_cscid(hit.ring, hit.station, hit.chamber)
+    try:
+      if hit.neighbor:
+        get_next_sector = lambda sector: sector + 1 if sector != 6 else 1
+        hit.sector = get_next_sector(hit.sector)
+    except:
+      pass
+  return
 
 # Encode EMTF chamber number
 # Total: 112 (6*9*2 + 4)
@@ -249,12 +293,14 @@ def find_emtf_chamber_initializer():
   lut[2,4,3,3] = 106 # RE4/1 neigh
   lut[2,4,9,3] = 107 # RE4/2 neigh
   #
-  lut[4,1,1,0] = 108 # ME0
-  lut[4,1,2,0] = 109 # ME0
-  lut[4,1,3,0] = 110 # ME0
-  lut[4,1,1,3] = 111 # ME0 neigh
-  lut[4,1,2,3] = 111 # ME0 neigh
-  lut[4,1,3,3] = 111 # ME0 neigh
+  lut[4,1,1,1] = 108 # ME0 sub 1
+  lut[4,1,2,1] = 109 # ME0 sub 1
+  lut[4,1,3,1] = 110 # ME0 sub 1
+  lut[4,1,1,2] = 111 # ME0 sub 2
+  lut[4,1,2,2] = 112 # ME0 sub 2
+  lut[4,1,3,2] = 113 # ME0 sub 2
+  lut[4,1,2,3] = 114 # ME0 neigh
+  lut[4,1,3,3] = 114 # ME0 neigh
 
   def lookup(_type, station, cscid, subsector, neighbor):
     subsector = np.where(neighbor, 3, subsector)  # neighbor -> subsector 3

@@ -159,35 +159,32 @@ class ChamberAnalysis(_BaseAnalysis):
       # Trigger primitives
       for ihit, hit in enumerate(evt.hits):
         if is_emtf_legit_hit(hit):
+          if hit.type == kME0:
+            # Special case for ME0 as it is a 20-deg chamber in station 1
+            hack_me0_hit_chamber(hit)
           out_hits.append([hit.type, hit.station, get_trigger_endsec(hit.endcap, hit.sector), hit.subsector, hit.cscid, hit.neighbor, hit.bx, ievt])
 
       # Sim hits
       for isimhit, simhit in enumerate(evt.simhits):
+        simhit.endcap = +1 if simhit.z >= 0 else -1
         if is_emtf_legit_hit(simhit):
           if simhit.type == kME0:
-            # Special case for ME0 as it is a 20-deg chamber. Pretend it is ME2/1 when calling these functions.
-            fake_station, fake_ring = 2, 1
-            simhit.endcap = +1 if simhit.z >= 0 else -1
-            simhit.sector = get_trigger_sector(fake_ring, fake_station, simhit.chamber)
-            simhit.subsector = get_trigger_subsector(fake_ring, fake_station, simhit.chamber)
-            simhit.cscid = get_trigger_cscid(fake_ring, fake_station, simhit.chamber)
-            simhit.neighid = get_trigger_neighid(fake_ring, fake_station, simhit.chamber)
-          else:
-            simhit.endcap = +1 if simhit.z >= 0 else -1
-            simhit.sector = get_trigger_sector(simhit.ring, simhit.station, simhit.chamber)
-            simhit.subsector = get_trigger_subsector(simhit.ring, simhit.station, simhit.chamber)
-            simhit.cscid = get_trigger_cscid(simhit.ring, simhit.station, simhit.chamber)
-            simhit.neighid = get_trigger_neighid(simhit.ring, simhit.station, simhit.chamber)
+            # Special case for ME0 as it is a 20-deg chamber in station 1
+            hack_me0_hit_chamber(simhit)
 
+          simhit.sector = get_trigger_sector(simhit.ring, simhit.station, simhit.chamber)
+          simhit.subsector = get_trigger_subsector(simhit.ring, simhit.station, simhit.chamber)
+          simhit.cscid = get_trigger_cscid(simhit.ring, simhit.station, simhit.chamber)
+          simhit.neighid = get_trigger_neighid(simhit.ring, simhit.station, simhit.chamber)
           simhit.bx = 0
           simhit.neighbor = 0
           out_simhits.append([simhit.type, simhit.station, get_trigger_endsec(simhit.endcap, simhit.sector), simhit.subsector, simhit.cscid, simhit.neighbor, simhit.bx, ievt])
 
+          # If neighbor, share simhit with the neighbor sector
           if simhit.neighid == 1:
-            # If neighbor, share simhit with the neighbor sector
-            old_sector = simhit.sector
-            simhit.sector = old_sector + 1 if old_sector != 6 else 1
+            get_next_sector = lambda sector: sector + 1 if sector != 6 else 1
             simhit.neighbor = 1
+            simhit.sector = get_next_sector(simhit.sector)
             out_simhits.append([simhit.type, simhit.station, get_trigger_endsec(simhit.endcap, simhit.sector), simhit.subsector, simhit.cscid, simhit.neighbor, simhit.bx, ievt])
 
     # End loop over events

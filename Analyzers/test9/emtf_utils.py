@@ -159,7 +159,7 @@ def get_trigger_cscid(ring, station, chamber):
   return result
 
 def get_trigger_neighid(ring, station, chamber):
-  # neighid is 0 for native chamber, 1 for neighbor chambe
+  # neighid is 0 for native chamber, 1 for neighbor chamber
   result = np.uint32(0)
   if station == 1:
     if np.uint32(chamber + 3) % 6 + 1 == 6:
@@ -513,12 +513,11 @@ def ragged_row_boolean_mask(ragged, row_mask):
   new_values = RaggedTensorValue(new_values, new_row_splits)
   return new_values
 
-
 # Based on
 #   https://www.tensorflow.org/api_docs/python/tf/sparse/SparseTensor
 #   https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/framework/sparse_tensor.py
 # Example
-#   sparse = SparseTensorValue(indices=np.array([[0, 0], [1, 2], [2, 3]]), values=np.array([1, 2, 3]), dense_shape=(3, 4))
+#   sparse = SparseTensorValue(indices=np.array([[0, 0], [1, 2], [2, 3]]), values=np.array([1, 2, 3]), dense_shape=np.array([3, 4]))
 class SparseTensorValue(object):
   """Represents the value of a `SparseTensor`."""
 
@@ -573,4 +572,63 @@ def sparse_to_dense(sparse):
   tup = tuple(sparse.indices[:, i] for i in range(ndims))
   dense = np.zeros(sparse.dense_shape, dtype=sparse.dtype)
   dense[tup] = sparse.values
+  return dense
+
+# Based on
+#   https://www.tensorflow.org/api_docs/python/tf/IndexedSlices
+#   https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/framework/indexed_slices.py
+# Example
+#   indexed = IndexedSlicesValue(indices=np.array([0, 2, 4]), values=np.array([[1,2,3,4], [-1,-2,-3,-4], [5,6,7,8]]), dense_shape=np.array([6, 4]))
+class IndexedSlicesValue(object):
+  """Represents the value of an `IndexedSlices`."""
+
+  def __init__(self, indices, values, dense_shape):
+    """Creates an `IndexedSlices`.
+    Args:
+      indices: A 1-D integer Tensor with shape [D0].
+      values: A Tensor of any dtype with shape [D0, D1, ..., Dn].
+      dense_shape: A 1-D int64 tensor of shape [ndims], e.g. [LARGE0, D1, .. , DN] where LARGE0 >> D0
+    """
+    if not (isinstance(indices[:1], (np.ndarray, np.generic)) and
+            indices.dtype in (np.int64, np.int32) and indices.ndim == 1):
+      raise TypeError("indices must be a 1D int32 or int64 numpy array")
+    if not (isinstance(values[:1], (np.ndarray, np.generic)) and values.ndim >= 1):
+      raise TypeError("values must be a 1D numpy array")
+    if not (isinstance(dense_shape[:1], (np.ndarray, np.generic)) and
+            dense_shape.dtype in (np.int64, np.int32) and dense_shape.ndim == 1):
+      raise TypeError("dense_shape must be a 1D int32 or int64 numpy array")
+    self._indices = indices
+    self._values = values
+    self._dense_shape = dense_shape
+
+  indices = property(
+      lambda self: self._indices,
+      doc="""The indices of non-zero values in the represented dense tensor.""")
+  values = property(
+      lambda self: self._values,
+      doc="""The non-zero values in the represented dense tensor.""")
+  dtype = property(
+      lambda self: self._values.dtype,
+      doc="""The numpy dtype of values in this tensor.""")
+  dense_shape = property(
+      lambda self: tuple(self._dense_shape),
+      doc="""A tuple representing the shape of the dense tensor.""")
+  shape = property(
+      lambda self: tuple(self._dense_shape),
+      doc="""A tuple representing the shape of the dense tensor.""")
+
+  def __repr__(self):
+    return "IndexedSlicesValue(indices=%r, values=%r, dense_shape=%r)" % (
+        self._indices, self._values, self._dense_shape)
+
+def dense_to_indexed_slices(dense, indices):
+  dense = np.asarray(dense)
+  indices = np.asarray(indices)
+  values = dense[indices]
+  dense_shape = np.asarray(dense.shape)
+  return IndexedSlicesValue(indices=indices, values=values, dense_shape=dense_shape)
+
+def indexed_slices_to_dense(indexed):
+  dense = np.zeros(indexed.dense_shape, dtype=indexed.dtype)
+  dense[indexed.indices] = indexed.values
   return dense

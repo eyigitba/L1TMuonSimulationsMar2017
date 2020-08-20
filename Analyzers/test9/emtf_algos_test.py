@@ -116,7 +116,7 @@ def test_find_emtf_chamber():
   assert find_emtf_chamber(_type, station, cscid, subsector, neighbor) == 45 + 54
 
   _type, station, cscid, subsector, neighbor = 4, 1, 3, 0, 1
-  assert find_emtf_chamber(_type, station, cscid, subsector, neighbor) == 3 + 54 + 54
+  assert find_emtf_chamber(_type, station, cscid, subsector, neighbor) == 6 + 54 + 54
 
   _type, station, cscid, subsector, neighbor = 1, 1, 3, 0, 0
   assert find_emtf_chamber(_type, station, cscid, subsector, neighbor) == -99
