@@ -16,6 +16,13 @@ num_emtf_sectors = 12
 num_emtf_zones = 3
 num_emtf_timezones = 3
 
+# chambers: 54 (CSC) + 43 (RPC) + 11 (GEM) + 4 (ME0)
+# segments: 2 (CSC), 2 (RPC), 8 (GEM), 20 (ME0) - using GEM as default
+# parameters: 8 (emtf_phi, emtf_bend, emtf_theta, emtf_theta_alt, emtf_qual, emtf_time, bx, valid)
+num_emtf_chambers = 115
+num_emtf_segments = 8
+num_emtf_variables = 8
+
 # Full range of emtf_phi is assumed to be 0..5040 (0..84 deg).
 # 84 deg from 60 (native) + 20 (neighbor) + 2 (tolerance, left) + 2 (tolerance, right).
 coarse_emtf_strip = 8 * 2  # 'doublestrip' unit
@@ -317,8 +324,28 @@ find_emtf_chamber = find_emtf_chamber_initializer()
 def decode_emtf_chamber():
   raise NotImplementedError()
 
+chamber_to_ri_layer_lut = [
+   0, 0, 0, 1, 1, 1, 2, 2, 2,  # ME1/1 sub 1, ME1/2 sub 1, ME1/3 sub 1
+   0, 0, 0, 1, 1, 1, 2, 2, 2,  # ME1/1 sub 2, ME1/2 sub 2, ME1/3 sub 2
+   3, 3, 3, 4, 4, 4, 4, 4, 4,  # ME2/1, ME2/2
+   5, 5, 5, 6, 6, 6, 6, 6, 6,  # ME3/1, ME3/2
+   7, 7, 7, 8, 8, 8, 8, 8, 8,  # ME4/1, ME4/2
+   0, 1, 2, 3, 4, 5, 6, 7, 8,  # neigh
+  #
+   9, 9, 9,10,10,10,11,11,11,  # GE1/1 sub 1, RE1/2 sub 1, RE1/3 sub 1
+   9, 9, 9,10,10,10,11,11,11,  # GE1/1 sub 2, RE1/2 sub 2, RE1/3 sub 2
+  12,12,12,13,13,13,13,13,13,  # GE2/1, RE2/2
+  14,14,14,15,15,15,15,15,15,  # RE3/1, RE3/2
+  16,16,16,17,17,17,17,17,17,  # RE4/1, RE4/2
+   9,10,11,12,13,14,15,16,17,  # neigh
+  #
+  18,18,18,18,18,18,18,        # ME0
+]
+
+chamber_to_ri_layer_lut = np.array(chamber_to_ri_layer_lut, dtype=np.int32)
+
 # Assign EMTF zones
-def find_emtf_zones_initializer():
+def find_emtf_zones_lut():
   default_value = -99
   lut = np.full((19,3,2), default_value, dtype=np.int32)  # (ri_layer,zone) -> (min_theta,max_theta)
   lut[0,0] = 4,26    # ME1/1
@@ -354,6 +381,10 @@ def find_emtf_zones_initializer():
   lut[13,2] = 56,88  # RE2/2
   lut[15,2] = 48,84  # RE3/2
   lut[17,2] = 52,84  # RE4/2
+  return lut
+
+def find_emtf_zones_initializer():
+  lut = find_emtf_zones_lut()
 
   def lookup(ri_layer, emtf_theta):
     ri_layer = np.asarray(ri_layer)
@@ -376,7 +407,7 @@ def find_emtf_zones_initializer():
 find_emtf_zones = find_emtf_zones_initializer()
 
 # Assign EMTF timezones
-def find_emtf_timezones_initializer():
+def find_emtf_timezones_lut():
   default_value = -99
   lut = np.full((19,3,2), default_value, dtype=np.int32)  # (ri_layer,timezone) -> (min_bx,max_bx)
   lut[0,1] = -1,0    # ME1/1
@@ -401,6 +432,10 @@ def find_emtf_timezones_initializer():
   #
   lut[:, 0] = lut[:, 1] - 1  # timezone 0 = timezone 1 - 1
   lut[:, 2] = lut[:, 1] + 1  # timezone 2 = timezone 1 + 1
+  return lut
+
+def find_emtf_timezones_initializer():
+  lut = find_emtf_timezones_lut()
 
   def lookup(ri_layer, bx):
     ri_layer = np.asarray(ri_layer)
@@ -423,7 +458,7 @@ def find_emtf_timezones_initializer():
 find_emtf_timezones = find_emtf_timezones_initializer()
 
 # Encode EMTF zone image layer
-def find_emtf_zo_layer_initializer():
+def find_emtf_zo_layer_lut():
   # Layer ordering (closest to furthest):
   # ME0, GE1/1, ME1/1,
   # ME1/2, RE1,
@@ -465,6 +500,10 @@ def find_emtf_zo_layer_initializer():
   lut[13,2] = 2  # RE2/2
   lut[15,2] = 5  # RE3/2
   lut[17,2] = 7  # RE4/2
+  return lut
+
+def find_emtf_zo_layer_initializer():
+  lut = find_emtf_zo_layer_lut()
 
   def lookup(ri_layer, zone):
     ri_layer = np.asarray(ri_layer)
@@ -598,5 +637,5 @@ def is_emtf_legit_hit_run2(hit):
 # ______________________________________________________________________________
 # Find particle zone based on eta
 def find_particle_zone(eta):
-  ind = np.searchsorted(emtf_eta_bins, np.abs(eta))
-  return (len(emtf_eta_bins)-1) - ind  # ind = (1,2,3,4) -> zone (3,2,1,0)
+  ind = hist_digitize_inclusive(np.abs(eta), emtf_eta_bins)
+  return (len(emtf_eta_bins)-2) - ind  # ind (0,1,2,3) -> zone (3,2,1,0)

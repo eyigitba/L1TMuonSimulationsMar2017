@@ -250,6 +250,90 @@ def save_root_histograms(outfile, histograms):
     for (k, v) in six.iteritems(histograms):
       v.Write()
 
+def hist_digitize(x, bins, ma_fill_value=999999):
+  """
+  Digitize according to how np.histogram() computes the histogram. All but the last
+  (righthand-most) bin is half-open i.e. [a, b). The last bin is closed i.e. [a, b].
+  Underflow and overflow values return an index set to `ma_fill_value`.
+
+  Examples:
+  --------
+  >>> hist_digitize(0, [1,2,3,4])
+  array(999999)
+  >>> hist_digitize(1, [1,2,3,4])
+  array(0)
+  >>> hist_digitize(1.1, [1,2,3,4])
+  array(0)
+  >>> hist_digitize(2, [1,2,3,4])
+  array(1)
+  >>> hist_digitize(3, [1,2,3,4])
+  array(2)
+  >>> hist_digitize(4, [1,2,3,4])
+  array(2)
+  >>> hist_digitize(4.1, [1,2,3,4])
+  array(999999)
+  >>> hist_digitize(5, [1,2,3,4])
+  array(999999)
+  """
+  bin_edges = np.asarray(bins)
+  n_bin_edges = bin_edges.size
+  if n_bin_edges < 2:
+    raise ValueError('`bins` must have size >= 2')
+  if bin_edges.ndim != 1:
+    raise ValueError('`bins` must be 1d')
+  if np.any(bin_edges[:-1] > bin_edges[1:]):
+    raise ValueError('`bins` must increase monotonically')
+  x = np.asarray(x)
+  x = np.ravel(x)
+  bin_index = bin_edges.searchsorted(x, side='right')
+  bin_index[x == bin_edges[-1]] -= 1
+  bin_index[bin_index == 0] = ma_fill_value
+  bin_index[bin_index == n_bin_edges] = ma_fill_value
+  bin_index[bin_index != ma_fill_value] -= 1
+  bin_index = np.squeeze(bin_index)
+  return bin_index
+
+def hist_digitize_inclusive(x, bins):
+  """
+  Digitize according to how np.histogram() computes the histogram. All but the last
+  (righthand-most) bin is half-open i.e. [a, b). The last bin is closed i.e. [a, b].
+  Underflow values return an index of 0, overflow values return an index of len(bins)-2.
+
+  Examples:
+  --------
+  >>> hist_digitize_inclusive(0, [1,2,3,4])
+  array(0)
+  >>> hist_digitize_inclusive(1, [1,2,3,4])
+  array(0)
+  >>> hist_digitize_inclusive(1.1, [1,2,3,4])
+  array(0)
+  >>> hist_digitize_inclusive(2, [1,2,3,4])
+  array(1)
+  >>> hist_digitize_inclusive(3, [1,2,3,4])
+  array(2)
+  >>> hist_digitize_inclusive(4, [1,2,3,4])
+  array(2)
+  >>> hist_digitize_inclusive(4.1, [1,2,3,4])
+  array(2)
+  >>> hist_digitize_inclusive(5, [1,2,3,4])
+  array(2)
+  """
+  bin_edges = np.asarray(bins)
+  n_bin_edges = bin_edges.size
+  if n_bin_edges < 2:
+    raise ValueError('`bins` must have size >= 2')
+  if bin_edges.ndim != 1:
+    raise ValueError('`bins` must be 1d')
+  if np.any(bin_edges[:-1] > bin_edges[1:]):
+    raise ValueError('`bins` must increase monotonically')
+  x = np.asarray(x)
+  x = x.ravel()
+  bin_index = bin_edges.searchsorted(x, side='right')
+  bin_index[bin_index == n_bin_edges] -= 1
+  bin_index[bin_index != 0] -= 1
+  bin_index = np.squeeze(bin_index)
+  return bin_index
+
 # Copied from https://github.com/keras-team/keras/blob/master/keras/engine/training_utils.py
 def make_batches(size, batch_size):
     """Returns a list of batch indices (tuples of indices).

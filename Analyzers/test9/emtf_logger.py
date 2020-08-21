@@ -1,13 +1,15 @@
 # Copied from https://docs.python.org/2/howto/logging.html
 def get_logger():
+  import os
   import logging
 
   # create logger
-  logger = logging.getLogger('test9')
+  cwd = os.path.basename(os.getcwd())
+  logger = logging.getLogger(cwd)
   logger.setLevel(logging.DEBUG)
 
   # create file handler which logs even debug messages
-  fh = logging.FileHandler('test9.log')
+  fh = logging.FileHandler(cwd+'.log')
   fh.setLevel(logging.DEBUG)
 
   # create console handler with a higher log level

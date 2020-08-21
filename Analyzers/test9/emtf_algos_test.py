@@ -225,3 +225,228 @@ def test_find_emtf_zo_layer():
   zone = 2
   answer = np.array([-99,0,-99,-99,3,-99,4,-99,6])
   assert (find_emtf_zo_layer(ri_layer, zone) == answer).all()
+
+def test_chamber_to_ri_layer_lut():
+  # Given y = F(x), find x = F^{-1}(y). F is assumed to be a LUT.
+  inverse_fn = lambda F, y: [[i for (i, y_i) in enumerate(F) if y_i == y_j] for y_j in y]
+  to_array = lambda x: np.asarray([np.asarray(x_i) for x_i in x])
+  to_list = lambda x: [x_i.tolist() for x_i in x]
+  flatten = lambda x: np.asarray([x_i_i for x_i in x for x_i_i in x_i])
+
+  num_emtf_ri_layers = 19
+  ri_layer_to_chamber_lut = to_array(inverse_fn(chamber_to_ri_layer_lut, range(num_emtf_ri_layers)))
+  ri_layer_to_chamber_lut_flat = flatten(ri_layer_to_chamber_lut)
+
+  assert len(chamber_to_ri_layer_lut) == num_emtf_chambers
+  assert len(ri_layer_to_chamber_lut) == num_emtf_ri_layers
+  assert len(ri_layer_to_chamber_lut_flat) == num_emtf_chambers
+  assert sorted(ri_layer_to_chamber_lut_flat.tolist()) == list(range(num_emtf_chambers))
+
+  # ME1/1, ME1/2, ME1/3, ME2/1, ME2/2, ME3/1, ME3/2, ME4/1, ME4/2,
+  # GE1/1, RE1/2, RE1/3, GE2/1, RE2/2, RE3/1, RE3/2, RE4/1, RE4/2,
+  # ME0
+  ri_layer_to_chamber_lut_answer = [
+    [  0,  1,  2,  9, 10, 11, 45,],
+    [  3,  4,  5, 12, 13, 14, 46,],
+    [  6,  7,  8, 15, 16, 17, 47,],
+    [ 18, 19, 20, 48,],
+    [ 21, 22, 23, 24, 25, 26, 49,],
+    [ 27, 28, 29, 50,],
+    [ 30, 31, 32, 33, 34, 35, 51,],
+    [ 36, 37, 38, 52,],
+    [ 39, 40, 41, 42, 43, 44, 53,],
+    [ 54, 55, 56, 63, 64, 65, 99,],
+    [ 57, 58, 59, 66, 67, 68,100,],
+    [ 60, 61, 62, 69, 70, 71,101,],
+    [ 72, 73, 74,102,],
+    [ 75, 76, 77, 78, 79, 80,103,],
+    [ 81, 82, 83,104,],
+    [ 84, 85, 86, 87, 88, 89,105,],
+    [ 90, 91, 92,106,],
+    [ 93, 94, 95, 96, 97, 98,107,],
+    [108,109,110,111,112,113,114,],
+  ]
+  assert to_list(ri_layer_to_chamber_lut) == ri_layer_to_chamber_lut_answer
+
+  # Further tests (zone 0)
+  zone = 0
+  num_emtf_zo_layers = 8
+  ri_layer_to_zo_layer_lut = find_emtf_zo_layer_lut()[:, zone]
+  zo_layer_to_ri_layer_lut = to_array(inverse_fn(ri_layer_to_zo_layer_lut, range(num_emtf_zo_layers)))
+
+  # ME0, GE1/1, ME1/1, GE2/1, ME2/1, ME3/1, RE3/1, ME4/1
+  zo_layer_to_ri_layer_lut_answer = [[18], [9], [0], [12], [3], [5], [14], [7, 16]]
+  assert to_list(zo_layer_to_ri_layer_lut) == zo_layer_to_ri_layer_lut_answer
+
+  ri_layer_to_zo_bounds_lut_0 = find_emtf_zones_lut()[:, zone, 0]
+  ri_layer_to_zo_bounds_lut_1 = find_emtf_zones_lut()[:, zone, 1]
+  zo_layer_to_chamber_lut = to_array([
+      [c for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
+      for ri_layers in zo_layer_to_ri_layer_lut
+  ])
+  zo_layer_to_zo_bounds_lut_0 = to_array([
+      [ri_layer_to_zo_bounds_lut_0[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
+      for ri_layers in zo_layer_to_ri_layer_lut
+  ])
+  zo_layer_to_zo_bounds_lut_1 = to_array([
+      [ri_layer_to_zo_bounds_lut_1[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
+      for ri_layers in zo_layer_to_ri_layer_lut
+  ])
+
+  zo_layer_to_chamber_lut_answer = [
+    [108, 109, 110, 111, 112, 113, 114],
+    [ 54,  55,  56,  63,  64,  65,  99],
+    [  0,   1,   2,   9,  10,  11,  45],
+    [ 72,  73,  74, 102],
+    [ 18,  19,  20,  48],
+    [ 27,  28,  29,  50],
+    [ 81,  82,  83, 104],
+    [ 36,  37,  38,  52,  90,  91,  92, 106],
+  ]
+  assert to_list(zo_layer_to_chamber_lut) == zo_layer_to_chamber_lut_answer
+
+  zo_layer_to_zo_bounds_lut_0_answer = [
+    [ 4,  4,  4,  4,  4,  4,  4],
+    [17, 17, 17, 17, 17, 17, 17],
+    [ 4,  4,  4,  4,  4,  4,  4],
+    [ 4,  4,  4,  4],
+    [ 4,  4,  4,  4],
+    [ 4,  4,  4,  4],
+    [ 4,  4,  4,  4],
+    [ 4,  4,  4,  4,  4,  4,  4,  4],
+  ]
+  assert to_list(zo_layer_to_zo_bounds_lut_0) == zo_layer_to_zo_bounds_lut_0_answer
+
+  zo_layer_to_zo_bounds_lut_1_answer = [
+    [23, 23, 23, 23, 23, 23, 23],
+    [26, 26, 26, 26, 26, 26, 26],
+    [26, 26, 26, 26, 26, 26, 26],
+    [25, 25, 25, 25],
+    [25, 25, 25, 25],
+    [25, 25, 25, 25],
+    [25, 25, 25, 25],
+    [25, 25, 25, 25, 25, 25, 25, 25],
+  ]
+  assert to_list(zo_layer_to_zo_bounds_lut_1) == zo_layer_to_zo_bounds_lut_1_answer
+
+  # Further tests (zone 1)
+  zone = 1
+  num_emtf_zo_layers = 8
+  ri_layer_to_zo_layer_lut = find_emtf_zo_layer_lut()[:, zone]
+  zo_layer_to_ri_layer_lut = to_array(inverse_fn(ri_layer_to_zo_layer_lut, range(num_emtf_zo_layers)))
+
+  # GE1/1, ME1/1, ME1/2, GE2/1, ME2/1, ME3/1, RE3/1, ME4/1
+  zo_layer_to_ri_layer_lut_answer = [[9], [0], [1, 10], [12], [3], [5, 6], [14, 15], [7, 8, 16, 17]]
+  assert to_list(zo_layer_to_ri_layer_lut) == zo_layer_to_ri_layer_lut_answer
+
+  ri_layer_to_zo_bounds_lut_0 = find_emtf_zones_lut()[:, zone, 0]
+  ri_layer_to_zo_bounds_lut_1 = find_emtf_zones_lut()[:, zone, 1]
+  zo_layer_to_chamber_lut = to_array([
+      [c for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
+      for ri_layers in zo_layer_to_ri_layer_lut
+  ])
+  zo_layer_to_zo_bounds_lut_0 = to_array([
+      [ri_layer_to_zo_bounds_lut_0[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
+      for ri_layers in zo_layer_to_ri_layer_lut
+  ])
+  zo_layer_to_zo_bounds_lut_1 = to_array([
+      [ri_layer_to_zo_bounds_lut_1[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
+      for ri_layers in zo_layer_to_ri_layer_lut
+  ])
+
+  zo_layer_to_chamber_lut_answer = [
+    [ 54,  55,  56,  63,  64,  65,  99],
+    [  0,   1,   2,   9,  10,  11,  45],
+    [  3,   4,   5,  12,  13,  14,  46,  57,  58,  59,  66,  67,  68, 100],
+    [ 72,  73,  74, 102],
+    [ 18,  19,  20,  48],
+    [ 27,  28,  29,  50,  30,  31,  32,  33,  34,  35,  51],
+    [ 81,  82,  83, 104,  84,  85,  86,  87,  88,  89, 105],
+    [ 36,  37,  38,  52,  39,  40,  41,  42,  43,  44,  53,  90,  91, 92, 106,  93,  94,  95,  96,  97,  98, 107],
+  ]
+  assert to_list(zo_layer_to_chamber_lut) == zo_layer_to_chamber_lut_answer
+
+  zo_layer_to_zo_bounds_lut_0_answer = [
+    [24, 24, 24, 24, 24, 24, 24],
+    [24, 24, 24, 24, 24, 24, 24],
+    [46, 46, 46, 46, 46, 46, 46, 52, 52, 52, 52, 52, 52, 52],
+    [23, 23, 23, 23],
+    [23, 23, 23, 23],
+    [23, 23, 23, 23, 44, 44, 44, 44, 44, 44, 44],
+    [23, 23, 23, 23, 40, 40, 40, 40, 40, 40, 40],
+    [23, 23, 23, 23, 38, 38, 38, 38, 38, 38, 38, 23, 23, 23, 23, 36, 36, 36, 36, 36, 36, 36],
+  ]
+  assert to_list(zo_layer_to_zo_bounds_lut_0) == zo_layer_to_zo_bounds_lut_0_answer
+
+  zo_layer_to_zo_bounds_lut_1_answer = [
+    [52, 52, 52, 52, 52, 52, 52],
+    [53, 53, 53, 53, 53, 53, 53],
+    [54, 54, 54, 54, 54, 54, 54, 56, 56, 56, 56, 56, 56, 56],
+    [46, 46, 46, 46],
+    [49, 49, 49, 49],
+    [40, 40, 40, 40, 54, 54, 54, 54, 54, 54, 54],
+    [36, 36, 36, 36, 52, 52, 52, 52, 52, 52, 52],
+    [35, 35, 35, 35, 54, 54, 54, 54, 54, 54, 54, 31, 31, 31, 31, 52, 52, 52, 52, 52, 52, 52],
+  ]
+  assert to_list(zo_layer_to_zo_bounds_lut_1) == zo_layer_to_zo_bounds_lut_1_answer
+
+  # Further tests (zone 1)
+  zone = 2
+  num_emtf_zo_layers = 8
+  ri_layer_to_zo_layer_lut = find_emtf_zo_layer_lut()[:, zone]
+  zo_layer_to_ri_layer_lut = to_array(inverse_fn(ri_layer_to_zo_layer_lut, range(num_emtf_zo_layers)))
+
+  # ME1/2, RE1/2, RE2/2, ME2/2, ME3/2, RE3/2, ME4/2, RE4/2
+  zo_layer_to_ri_layer_lut_answer = [[1], [10], [13], [4], [6], [15], [8], [17]]
+  assert to_list(zo_layer_to_ri_layer_lut) == zo_layer_to_ri_layer_lut_answer
+
+  ri_layer_to_zo_bounds_lut_0 = find_emtf_zones_lut()[:, zone, 0]
+  ri_layer_to_zo_bounds_lut_1 = find_emtf_zones_lut()[:, zone, 1]
+  zo_layer_to_chamber_lut = to_array([
+      [c for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
+      for ri_layers in zo_layer_to_ri_layer_lut
+  ])
+  zo_layer_to_zo_bounds_lut_0 = to_array([
+      [ri_layer_to_zo_bounds_lut_0[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
+      for ri_layers in zo_layer_to_ri_layer_lut
+  ])
+  zo_layer_to_zo_bounds_lut_1 = to_array([
+      [ri_layer_to_zo_bounds_lut_1[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
+      for ri_layers in zo_layer_to_ri_layer_lut
+  ])
+
+  zo_layer_to_chamber_lut_answer = [
+    [  3,   4,   5,  12,  13,  14,  46],
+    [ 57,  58,  59,  66,  67,  68, 100],
+    [ 75,  76,  77,  78,  79,  80, 103],
+    [ 21,  22,  23,  24,  25,  26,  49],
+    [ 30,  31,  32,  33,  34,  35,  51],
+    [ 84,  85,  86,  87,  88,  89, 105],
+    [ 39,  40,  41,  42,  43,  44,  53],
+    [ 93,  94,  95,  96,  97,  98, 107],
+  ]
+  assert to_list(zo_layer_to_chamber_lut) == zo_layer_to_chamber_lut_answer
+
+  zo_layer_to_zo_bounds_lut_0_answer = [
+    [52, 52, 52, 52, 52, 52, 52],
+    [52, 52, 52, 52, 52, 52, 52],
+    [56, 56, 56, 56, 56, 56, 56],
+    [53, 53, 53, 53, 53, 53, 53],
+    [51, 51, 51, 51, 51, 51, 51],
+    [48, 48, 48, 48, 48, 48, 48],
+    [51, 51, 51, 51, 51, 51, 51],
+    [52, 52, 52, 52, 52, 52, 52],
+  ]
+  assert to_list(zo_layer_to_zo_bounds_lut_0) == zo_layer_to_zo_bounds_lut_0_answer
+
+  zo_layer_to_zo_bounds_lut_1_answer = [
+    [88, 88, 88, 88, 88, 88, 88],
+    [84, 84, 84, 84, 84, 84, 84],
+    [88, 88, 88, 88, 88, 88, 88],
+    [88, 88, 88, 88, 88, 88, 88],
+    [88, 88, 88, 88, 88, 88, 88],
+    [84, 84, 84, 84, 84, 84, 84],
+    [88, 88, 88, 88, 88, 88, 88],
+    [84, 84, 84, 84, 84, 84, 84],
+  ]
+  assert to_list(zo_layer_to_zo_bounds_lut_1) == zo_layer_to_zo_bounds_lut_1_answer
