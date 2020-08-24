@@ -1,6 +1,0 @@
-# Use jupyter
-jupyter-notebook --no-browser --ip=localhost --port=8889
-
-# Run notebooks from the command line
-#nohup jupyter-nbconvert --ExecutePreprocessor.timeout=-1 --to notebook --execute standalone_patterns.ipynb --output standalone_patterns_evaluated.ipynb &
-#nohup jupyter-nbconvert --ExecutePreprocessor.timeout=-1 --to notebook --execute standalone_application.ipynb --output standalone_application_evaluated.ipynb &
