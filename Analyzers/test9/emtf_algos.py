@@ -18,10 +18,10 @@ num_emtf_timezones = 3
 
 # chambers: 54 (CSC) + 43 (RPC) + 11 (GEM) + 4 (ME0)
 # segments: 2 (CSC), 2 (RPC), 8 (GEM), 20 (ME0) - using GEM as default
-# parameters: 8 (emtf_phi, emtf_bend, emtf_theta, emtf_theta_alt, emtf_qual, emtf_time, bx, valid)
+# parameters: 10 (emtf_phi, emtf_bend, emtf_theta, emtf_theta_alt, emtf_qual, emtf_time, zones, timezones, bx, valid)
 num_emtf_chambers = 115
 num_emtf_segments = 8
-num_emtf_variables = 8
+num_emtf_variables = 10
 
 # Full range of emtf_phi is assumed to be 0..5040 (0..84 deg).
 # 84 deg from 60 (native) + 20 (neighbor) + 2 (tolerance, left) + 2 (tolerance, right).
