@@ -17,10 +17,10 @@ num_emtf_zones = 3
 num_emtf_timezones = 3
 
 # chambers: 54 (CSC) + 43 (RPC) + 11 (GEM) + 4 (ME0)
-# segments: 2 (CSC), 2 (RPC), 8 (GEM), 20 (ME0) - using GEM as default
+# segments: 2 (CSC), 2 (RPC), 8 (GEM), 20 (ME0) - using CSC as default
 # parameters: 10 (emtf_phi, emtf_bend, emtf_theta, emtf_theta_alt, emtf_qual, emtf_time, zones, timezones, bx, valid)
 num_emtf_chambers = 115
-num_emtf_segments = 8
+num_emtf_segments = 2
 num_emtf_variables = 10
 
 # Full range of emtf_phi is assumed to be 0..5040 (0..84 deg).
@@ -142,6 +142,12 @@ def decode_emtf_ri_layer_initializer():
 
 # The initializer will instantiate the lookup tables
 decode_emtf_ri_layer = decode_emtf_ri_layer_initializer()
+
+ri_layer_to_emtf_layer_lut = [
+  0, 1, 1, 2, 2, 3, 3, 4, 4, 9, 5, 5, 10, 6, 7, 7, 8, 8, 11
+]
+
+ri_layer_to_emtf_layer_lut = np.array(ri_layer_to_emtf_layer_lut, dtype=np.int32)
 
 # Hack ME0 chamber number
 # Converting from 20-deg chamber into 10-deg chamber
@@ -526,6 +532,10 @@ zo_layer_labels = [
 def find_emtf_zo_phi(emtf_phi):
   emtf_phi = np.asarray(emtf_phi)
   return (emtf_phi - min_emtf_strip) // coarse_emtf_strip
+
+def find_emtf_zo_phi_inverse(zo_phi):
+  zo_phi = np.asarray(zo_phi)
+  return (zo_phi * coarse_emtf_strip + coarse_emtf_strip // 2) + min_emtf_strip
 
 # ______________________________________________________________________________
 def find_emtf_phi(hit):
