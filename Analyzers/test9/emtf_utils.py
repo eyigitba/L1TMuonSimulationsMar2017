@@ -9,14 +9,15 @@ import numpy as np
 import six
 from six.moves import range, zip, map, filter
 
-# ______________________________________________________________________________
-# Utilities
 
+# ______________________________________________________________________________
 # Enums
+
 kDT, kCSC, kRPC, kGEM, kME0 = 0, 1, 2, 3, 4
 
 kDEBUG, kINFO, kWARNING, kERROR, kFATAL = 0, 1, 2, 3, 4
 
+# ______________________________________________________________________________
 # Functions
 
 def wrap_phi_rad(x):
@@ -175,6 +176,8 @@ def get_trigger_neighid(ring, station, chamber):
 
 def get_trigger_endsec(endcap, sector):
   # endsec is 0-5 in positive endcap, 6-11 in negative endcap
+  assert(endcap == 1 or endcap == -1)
+  assert(1 <= sector <= 6)
   result = (sector - 1) if endcap == 1 else (sector - 1 + 6)
   return result
 

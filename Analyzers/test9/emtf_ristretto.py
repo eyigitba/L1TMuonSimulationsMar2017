@@ -21,19 +21,18 @@ class EMTFSectorRanking(object):
     self.sectors.fill(0)
 
   def add(self, hit):
-    ri_layer = find_emtf_ri_layer(hit.type, hit.station, hit.ring)
-    assert (0 <= ri_layer and ri_layer < 19)
-    ri_layer_valid = np.zeros(8, dtype=np.bool)
-    ri_layer_valid[0] = (ri_layer == 18)               # ME0
-    ri_layer_valid[1] = (ri_layer == 0)                # ME1/1
-    ri_layer_valid[2] = (ri_layer in (1,2))            # ME1/2, ME1/3
-    ri_layer_valid[3] = (ri_layer in (3,4))            # ME2/1, ME2/2
-    ri_layer_valid[4] = (ri_layer in (5,6))            # ME3/1, ME3/2
-    ri_layer_valid[5] = (ri_layer in (7,8))            # ME4/1, ME4/2
-    ri_layer_valid[6] = (ri_layer in (9,10,11,12,13))  # GE1/1, RE1/2, GE2/1, RE2/2
-    ri_layer_valid[7] = (ri_layer in (14,15,16,17))    # RE3/1, RE3/2, RE4/1, RE4/2
-    rank = np.packbits(ri_layer_valid)                 # pack 8 booleans into an uint8
-
+    emtf_host = find_emtf_host(hit.type, hit.station, hit.ring)
+    assert (0 <= emtf_host and emtf_host < num_emtf_hosts)
+    valid_flag = np.zeros(8, dtype=np.bool)
+    valid_flag[0] = (emtf_host == 18)               # ME0
+    valid_flag[1] = (emtf_host == 0)                # ME1/1
+    valid_flag[2] = (emtf_host in (1,2))            # ME1/2, ME1/3
+    valid_flag[3] = (emtf_host in (3,4))            # ME2/1, ME2/2
+    valid_flag[4] = (emtf_host in (5,6))            # ME3/1, ME3/2
+    valid_flag[5] = (emtf_host in (7,8))            # ME4/1, ME4/2
+    valid_flag[6] = (emtf_host in (9,10,11,12,13))  # GE1/1, RE1/2, RE1/3, GE2/1, RE2/2
+    valid_flag[7] = (emtf_host in (14,15,16,17))    # RE3/1, RE3/2, RE4/1, RE4/2
+    rank = np.packbits(valid_flag)                  # pack 8 booleans into an uint8
     endsec = get_trigger_endsec(hit.endcap, hit.sector)
     self.sectors[endsec] |= rank
 
@@ -52,62 +51,64 @@ class EMTFChamberCouncil(object):
 
   def add(self, hit):
     # Call functions
-    emtf_layer = find_emtf_layer(hit.type, hit.station, hit.ring)
-    ri_layer = find_emtf_ri_layer(hit.type, hit.station, hit.ring)
+    emtf_site = find_emtf_site(hit.type, hit.station, hit.ring)
+    emtf_host = find_emtf_host(hit.type, hit.station, hit.ring)
     emtf_chamber = find_emtf_chamber(hit.type, hit.station, hit.cscid, hit.subsector, hit.neighbor)
-    emtf_segment = 0
-    zones = find_emtf_zones(ri_layer, hit.emtf_theta)
-    timezones = find_emtf_timezones(ri_layer, hit.bx)
-    try:
-      detlayer = hit.layer
-    except:
-      detlayer = 0
-
-    assert(emtf_layer != -99)
-    assert(ri_layer != -99)
-    assert(emtf_chamber != -99)
+    emtf_segment = 0  # dummy
+    zones = find_emtf_zones(emtf_host, hit.emtf_theta)
+    timezones = find_emtf_timezones(emtf_host, hit.bx)
 
     emtf_phi = find_emtf_phi(hit)
+    emtf_bend = find_emtf_bend(hit)
     emtf_theta = find_emtf_theta(hit)
     emtf_theta_alt = emtf_theta
-    emtf_bend = find_emtf_bend(hit)
     emtf_qual = find_emtf_qual(hit)
+    emtf_qual_alt = emtf_qual
     emtf_time = find_emtf_time(hit)
 
+    assert(emtf_site != -99)
+    assert(emtf_host != -99)
+    assert(emtf_chamber != -99)
+
     # Assign variables
-    hit.emtf_layer = emtf_layer
-    hit.ri_layer = ri_layer
+    hit.emtf_site = emtf_site
+    hit.emtf_host = emtf_host
     hit.emtf_chamber = emtf_chamber
     hit.emtf_segment = emtf_segment
     hit.zones = zones
     hit.timezones = timezones
-    hit.detlayer = detlayer
 
     hit.emtf_phi = emtf_phi
+    hit.emtf_bend = emtf_bend
     hit.emtf_theta = emtf_theta
     hit.emtf_theta_alt = emtf_theta_alt
-    hit.emtf_bend = emtf_bend
     hit.emtf_qual = emtf_qual
+    hit.emtf_qual_alt = emtf_qual_alt
     hit.emtf_time = emtf_time
 
-    # Add hit to chamber
+    try:
+      hit.detlayer = hit.layer
+    except:
+      hit.detlayer = 0
+
+    # Add hit according to (bx,chamber)
     k = (hit.bx, hit.emtf_chamber)
     if k not in self.chambers:
       self.chambers[k] = []
     self.chambers[k].append(hit)
 
   def _to_numpy(self, hits):
-    default_value = -99
-    getter = lambda hit: [hit.emtf_layer, hit.ri_layer, hit.zones, hit.timezones,
-                          hit.emtf_chamber, hit.emtf_segment, hit.detlayer, hit.bx,
-                          hit.emtf_phi, hit.emtf_bend, hit.emtf_theta, hit.emtf_theta_alt,
-                          hit.emtf_qual, hit.emtf_time, hit.fr, default_value]
+    # Send 18 variables
+    getter = lambda hit: [hit.emtf_site, hit.emtf_host, hit.emtf_chamber, hit.emtf_segment, hit.zones, hit.timezones,] + \
+        [hit.emtf_phi, hit.emtf_bend, hit.emtf_theta, hit.emtf_theta_alt, hit.emtf_qual, hit.emtf_qual_alt, hit.emtf_time,] + \
+        [hit.strip, hit.wire, hit.fr, hit.detlayer, hit.bx,]
     arr = np.array([getter(hit) for hit in hits], dtype=np.int32)
     return arr
 
   def _get_hits_from_chambers_sim(self):
     hits = []
     sorted_keys = sorted(self.chambers.keys())
+
     for k in sorted_keys:
       (bx, emtf_chamber) = k
       tmp_hits = self.chambers[k]
@@ -116,7 +117,7 @@ class EMTFChamberCouncil(object):
       # For RPC and GEM, keep the first one; For CSC, ME0 and DT, keep the median
       ind = 0
       if len(tmp_hits) > 1:
-        tmp_hits.sort(key=lambda hit: hit.layer)
+        tmp_hits.sort(key=lambda hit: hit.detlayer)
         if tmp_hits[0].type == kRPC or tmp_hits[0].type == kGEM:
           ind = 0
         else:
@@ -129,6 +130,7 @@ class EMTFChamberCouncil(object):
   def _get_hits_from_chambers(self):
     hits = []
     sorted_keys = sorted(self.chambers.keys())
+
     for k in sorted_keys:
       (bx, emtf_chamber) = k
       tmp_hits = self.chambers[k]
@@ -140,8 +142,8 @@ class EMTFChamberCouncil(object):
         emtf_phi_b = np.max([hit.emtf_phi for hit in tmp_hits])
         emtf_theta_a = np.min([hit.emtf_theta for hit in tmp_hits])
         emtf_theta_b = np.max([hit.emtf_theta for hit in tmp_hits])
-
         emtf_segment = 0
+
         for hit in tmp_hits:
           keep = False
           if (hit.emtf_phi == emtf_phi_a) and (hit.emtf_theta == emtf_theta_a):
@@ -155,6 +157,9 @@ class EMTFChamberCouncil(object):
             hit.emtf_segment = emtf_segment
             emtf_segment += 1
             hits.append(hit)
+
+          if keep and (emtf_phi_a == emtf_phi_b):
+            break
 
       else:  # non-CSC
         if emtf_chamber in (108,109,110,111,112,113,114):  # ME0
@@ -174,10 +179,13 @@ class EMTFChamberCouncil(object):
         else:                                         # RE1/2, RE1/3
           assert len(tmp_hits) <= 2
         emtf_segment = 0
+
         for hit in tmp_hits:
-          hit.emtf_segment = emtf_segment
-          emtf_segment += 1
-          hits.append(hit)
+          keep = True
+          if keep:
+            hit.emtf_segment = emtf_segment
+            emtf_segment += 1
+            hits.append(hit)
     return hits
 
   def get_hits(self):
@@ -185,8 +193,8 @@ class EMTFChamberCouncil(object):
       hits = self._get_hits_from_chambers_sim()
     else:
       hits = self._get_hits_from_chambers()
-    hits = self._to_numpy(hits)
-    return hits
+    hits_array = self._to_numpy(hits)
+    return hits_array
 
 
 # ______________________________________________________________________________
@@ -210,7 +218,7 @@ class SignalAnalysis(_BaseAnalysis):
 
     sectors = EMTFSectorRanking()
     chambers = EMTFChamberCouncil()
-    chambers_simhits = EMTFChamberCouncil(is_sim=True)
+    chambers_sim = EMTFChamberCouncil(is_sim=True)
 
     # __________________________________________________________________________
     # Load tree
@@ -232,7 +240,7 @@ class SignalAnalysis(_BaseAnalysis):
       # Reset
       sectors.reset()
       chambers.reset()
-      chambers_simhits.reset()
+      chambers_sim.reset()
 
       # Particles
       try:
@@ -276,26 +284,26 @@ class SignalAnalysis(_BaseAnalysis):
           simhit.subsector = get_trigger_subsector(simhit.ring, simhit.station, simhit.chamber)
           simhit.cscid = get_trigger_cscid(simhit.ring, simhit.station, simhit.chamber)
           simhit.neighid = get_trigger_neighid(simhit.ring, simhit.station, simhit.chamber)
-          simhit.bx, simhit.bend, simhit.quality, simhit.fr, simhit.time = 0, 0, 0, 0, 0  # dummy
+          simhit.bx = simhit.bend = simhit.quality = simhit.time = simhit.strip = simhit.wire = simhit.fr = 0  # dummy
 
           # If neighbor, share simhit with the neighbor sector
-          get_prev_sector = lambda sector: sector - 1 if sector != 1 else 6
-          get_next_sector = lambda sector: sector + 1 if sector != 6 else 1
+          get_prev_sector = lambda sector: (sector - 1) if sector != 1 else (sector - 1 + 6)
+          get_next_sector = lambda sector: (sector + 1) if sector != 6 else (sector + 1 - 6)
           if get_trigger_endsec(simhit.endcap, simhit.sector) == best_sector:
             simhit.neighbor = 0
-            chambers_simhits.add(simhit)
+            chambers_sim.add(simhit)
           elif get_trigger_endsec(simhit.endcap, get_next_sector(simhit.sector)) == best_sector:
             if simhit.neighid == 1:
               simhit.neighbor = 1
               simhit.sector = get_next_sector(simhit.sector)
-              chambers_simhits.add(simhit)
+              chambers_sim.add(simhit)
           elif get_trigger_endsec(simhit.endcap, get_prev_sector(simhit.sector)) == best_sector:
             if simhit.type == kME0 and simhit.emtf_phi >= ((55 + 22) * 60):
               # Special case for ME0 as there is a 5 deg shift.
               # The CSC chamber 1 starts at -5 deg, but the ME0 chamber 1 starts at -10 deg.
               simhit.neighbor = 0
               simhit.sector = get_prev_sector(simhit.sector)
-              chambers_simhits.add(simhit)
+              chambers_sim.add(simhit)
 
       # Fourth, extract the particle and hits
       def get_part_info():
@@ -307,16 +315,18 @@ class SignalAnalysis(_BaseAnalysis):
 
       ievt_part = get_part_info()
       ievt_hits = chambers.get_hits()
-      ievt_simhits = chambers_simhits.get_hits()
+      ievt_simhits = chambers_sim.get_hits()
 
       # Fifth, check for at least 2 stations (using sim hits)
       require_two_stations = True
 
       if require_two_stations:
-        _stations = [hit.station for tmp_hits in six.itervalues(chambers_simhits.chambers) for hit in tmp_hits]
+        _stations = [hit.station for tmp_hits in six.itervalues(chambers_sim.chambers) for hit in tmp_hits]
+        _types = [hit.type for tmp_hits in six.itervalues(chambers_sim.chambers) for hit in tmp_hits]
         min_station = np.min(_stations) if len(_stations) else 5
         max_station = np.max(_stations) if len(_stations) else 0
-        keep = ((min_station <= 1 and max_station >= 2) or (min_station <= 2 and max_station >= 3))
+        both_me0_me1 = (kME0 in _types) and (kCSC in _types)
+        keep = (min_station <= 1 and max_station >= 2) or (min_station == 2 and max_station >= 3) or (max_station == 1 and both_me0_me1)
         if not keep:
           ievt_hits = np.array([], dtype=np.int32)
           ievt_simhits = np.array([], dtype=np.int32)

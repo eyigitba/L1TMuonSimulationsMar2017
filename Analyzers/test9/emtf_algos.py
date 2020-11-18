@@ -10,34 +10,45 @@ from emtf_utils import *
 
 
 # ______________________________________________________________________________
-# Classes
+# Constants
 
+# 2 endcaps, 6 sectors per endcap. 3 zones and 3 timezones per sector.
 num_emtf_sectors = 12
 num_emtf_zones = 3
 num_emtf_timezones = 3
 
 # chambers: 54 (CSC) + 43 (RPC) + 11 (GEM) + 4 (ME0)
-# segments: 2 (CSC), 2 (RPC), 8 (GEM), 20 (ME0) - using CSC as default
-# parameters: 10 (emtf_phi, emtf_bend, emtf_theta, emtf_theta_alt, emtf_qual, emtf_time, zones, timezones, bx, valid)
+# segments: 2 (CSC), 2 (RPC), 8 (GEM), 4 (iRPC), 20 (ME0) - using CSC as default
+# variables: 13 (emtf_phi, emtf_bend, emtf_theta1, emtf_theta2, emtf_qual1, emtf_qual2, emtf_time, zones, timezones, fr, dl, bx, valid)
 num_emtf_chambers = 115
 num_emtf_segments = 2
-num_emtf_variables = 10
+num_emtf_variables = 13
+
+num_emtf_sites = 12
+num_emtf_hosts = 19
+
+num_emtf_tracks = 4
+num_emtf_patterns = 7
+num_emtf_features = 36
+
+# Eta boundaries used to define the zones
+emtf_eta_bins = (0.8, 1.2, 1.55, 1.98, 2.4)
 
 # Full range of emtf_phi is assumed to be 0..5040 (0..84 deg).
 # 84 deg from 60 (native) + 20 (neighbor) + 2 (tolerance, left) + 2 (tolerance, right).
 coarse_emtf_strip = 8 * 2  # 'doublestrip' unit
 num_coarse_emtf_strips = 288  # num of doublestrip units to allocate
 min_emtf_strip = (315 - num_coarse_emtf_strips) * coarse_emtf_strip  # 7.2 deg
-max_emtf_strip = 315 * coarse_emtf_strip  # 84 deg
+max_emtf_strip = (315 - 0) * coarse_emtf_strip  # 84 deg
 
-emtf_eta_bins = (0.8, 1.2, 1.55, 1.98, 2.5)
+# ______________________________________________________________________________
+# Functions
 
-
-# Encode EMTF layer number
+# Encode EMTF site number
 # Total: 12 (5 from CSC + 4 from RPC + 3 from GEM)
-def find_emtf_layer_initializer():
+def find_emtf_site_initializer():
   default_value = -99
-  lut = np.full((5,5,5), default_value, dtype=np.int32)  # (type, station, ring) -> layer
+  lut = np.full((5,5,5), default_value, dtype=np.int32)  # (type, station, ring) -> site
   lut[1,1,4] = 0  # ME1/1a
   lut[1,1,1] = 0  # ME1/1b
   lut[1,1,2] = 1  # ME1/2
@@ -70,13 +81,13 @@ def find_emtf_layer_initializer():
   return lookup
 
 # The initializer will instantiate the lookup table
-find_emtf_layer = find_emtf_layer_initializer()
+find_emtf_site = find_emtf_site_initializer()
 
-# Encode EMTF ri_layer number that retains some ring info
-# Total: 19 (9*2 + 1)
-def find_emtf_ri_layer_initializer():
+# Encode EMTF host number, which is more narrowly defined than site number
+# Total: 19 (9 from CSC + 9 from GEM & RPC + 1 from ME0)
+def find_emtf_host_initializer():
   default_value = -99
-  lut = np.full((5,5,5), default_value, dtype=np.int32)  # (type, station, ring) -> layer
+  lut = np.full((5,5,5), default_value, dtype=np.int32)  # (type, station, ring) -> host
   lut[1,1,4] = 0  # ME1/1a
   lut[1,1,1] = 0  # ME1/1b
   lut[1,1,2] = 1  # ME1/2
@@ -109,45 +120,43 @@ def find_emtf_ri_layer_initializer():
   return lookup
 
 # The initializer will instantiate the lookup table
-find_emtf_ri_layer = find_emtf_ri_layer_initializer()
+find_emtf_host = find_emtf_host_initializer()
 
-# Decode EMTF layer number
-def decode_emtf_layer_initializer():
+# Decode EMTF site number
+def decode_emtf_site_initializer():
   lut_0 = np.array([1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4])  # exact
   lut_1 = np.array([1, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 1])  # exact
   lut_2 = np.array([1, 2, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1])  # inexact
 
-  def lookup(emtf_layer):
-    _type = np.take(lut_0, emtf_layer)
-    station = np.take(lut_1, emtf_layer)
-    ring = np.take(lut_2, emtf_layer)
+  def lookup(emtf_site):
+    _type = np.take(lut_0, emtf_site)
+    station = np.take(lut_1, emtf_site)
+    ring = np.take(lut_2, emtf_site)
     return (_type, station, ring)
   return lookup
 
 # The initializer will instantiate the lookup tables
-decode_emtf_layer = decode_emtf_layer_initializer()
+decode_emtf_site = decode_emtf_site_initializer()
 
-# Decode EMTF ri_layer number that retains some ring info
-def decode_emtf_ri_layer_initializer():
+# Decode EMTF host number
+def decode_emtf_host_initializer():
   lut_0 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 2, 2, 3, 2, 2, 2, 2, 2, 4])  # exact
   lut_1 = np.array([1, 1, 1, 2, 2, 3, 3, 4, 4, 1, 1, 1, 2, 2, 3, 3, 4, 4, 1])  # exact
   lut_2 = np.array([1, 2, 3, 1, 2, 1, 2, 1, 2, 1, 2, 3, 1, 2, 1, 2, 1, 2, 1])  # inexact
 
-  def lookup(ri_layer):
-    _type = np.take(lut_0, ri_layer)
-    station = np.take(lut_1, ri_layer)
-    ring = np.take(lut_2, ri_layer)
+  def lookup(emtf_host):
+    _type = np.take(lut_0, emtf_host)
+    station = np.take(lut_1, emtf_host)
+    ring = np.take(lut_2, emtf_host)
     return (_type, station, ring)
   return lookup
 
 # The initializer will instantiate the lookup tables
-decode_emtf_ri_layer = decode_emtf_ri_layer_initializer()
+decode_emtf_host = decode_emtf_host_initializer()
 
-ri_layer_to_emtf_layer_lut = [
+host_to_site_lut = np.array([
   0, 1, 1, 2, 2, 3, 3, 4, 4, 9, 5, 5, 10, 6, 7, 7, 8, 8, 11
-]
-
-ri_layer_to_emtf_layer_lut = np.array(ri_layer_to_emtf_layer_lut, dtype=np.int32)
+], dtype=np.int32)
 
 # Hack ME0 chamber number
 # Converting from 20-deg chamber into 10-deg chamber
@@ -161,7 +170,7 @@ def hack_me0_hit_chamber(hit):
           pass
         elif 191 < hit.strip < (767 - 192):  # next 10 deg (1/2 of chamber)
           new_chamber -= 1
-        elif hit.strip >= (767 - 192):  # last 10 deg (1/4 of chamber)
+        elif hit.strip >= (767 - 192):  # last 5 deg (1/4 of chamber)
           new_chamber -= 2
       except:
         pass
@@ -171,12 +180,12 @@ def hack_me0_hit_chamber(hit):
           pass
         elif 191 < hit.strip < (767 - 192):  # next 10 deg (1/2 of chamber)
           new_chamber -= 1
-        elif hit.strip <= 191:  # first 5 deg (1/4 of chamber)
+        elif hit.strip <= 191:  # last 5 deg (1/4 of chamber)
           new_chamber -= 2
       except:
         pass
     if new_chamber == 0:
-      new_chamber = 36
+      new_chamber += 36
 
     # Overwrite chamber, sector, subsector, cscid
     hit.chamber = new_chamber
@@ -185,7 +194,7 @@ def hack_me0_hit_chamber(hit):
     hit.cscid = get_trigger_cscid(hit.ring, hit.station, hit.chamber)
     try:
       if hit.neighbor:
-        get_next_sector = lambda sector: sector + 1 if sector != 6 else 1
+        get_next_sector = lambda sector: (sector + 1) if sector != 6 else (sector + 1 - 6)
         hit.sector = get_next_sector(hit.sector)
     except:
       pass
@@ -330,7 +339,7 @@ find_emtf_chamber = find_emtf_chamber_initializer()
 def decode_emtf_chamber():
   raise NotImplementedError()
 
-chamber_to_ri_layer_lut = [
+chamber_to_host_lut = np.array([
    0, 0, 0, 1, 1, 1, 2, 2, 2,  # ME1/1 sub 1, ME1/2 sub 1, ME1/3 sub 1
    0, 0, 0, 1, 1, 1, 2, 2, 2,  # ME1/1 sub 2, ME1/2 sub 2, ME1/3 sub 2
    3, 3, 3, 4, 4, 4, 4, 4, 4,  # ME2/1, ME2/2
@@ -346,14 +355,12 @@ chamber_to_ri_layer_lut = [
    9,10,11,12,13,14,15,16,17,  # neigh
   #
   18,18,18,18,18,18,18,        # ME0
-]
-
-chamber_to_ri_layer_lut = np.array(chamber_to_ri_layer_lut, dtype=np.int32)
+], dtype=np.int32)
 
 # Assign EMTF zones
 def find_emtf_zones_lut():
   default_value = -99
-  lut = np.full((19,3,2), default_value, dtype=np.int32)  # (ri_layer,zone) -> (min_theta,max_theta)
+  lut = np.full((num_emtf_hosts, num_emtf_zones, 2), default_value, dtype=np.int32)  # (host,zone) -> (min_theta,max_theta)
   lut[0,0] = 4,26    # ME1/1
   lut[3,0] = 4,25    # ME2/1
   lut[5,0] = 4,25    # ME3/1
@@ -392,18 +399,18 @@ def find_emtf_zones_lut():
 def find_emtf_zones_initializer():
   lut = find_emtf_zones_lut()
 
-  def lookup(ri_layer, emtf_theta):
-    ri_layer = np.asarray(ri_layer)
+  def lookup(emtf_host, emtf_theta):
+    emtf_host = np.asarray(emtf_host)
     emtf_theta = np.asarray(emtf_theta)
-    bounds = np.take(lut, ri_layer, axis=0)
+    bounds = np.take(lut, emtf_host, axis=0)
     # Create a boolean array representing the bits in a uint8 array. Set the last 3 bits.
     # Then, pack into a uint8 array
-    if ri_layer.ndim == 0:
+    if emtf_host.ndim == 0:
       result = np.zeros(8, dtype=np.bool)
       result[-3:] = (bounds[..., 0] <= emtf_theta) & (emtf_theta <= bounds[..., 1])
       result = np.packbits(result)
     else:
-      result = np.zeros(ri_layer.shape + (8,), dtype=np.bool)
+      result = np.zeros(emtf_host.shape + (8,), dtype=np.bool)
       result[..., -3:] = (bounds[..., 0] <= emtf_theta[:, np.newaxis]) & (emtf_theta[:, np.newaxis] <= bounds[..., 1])
       result = np.packbits(result)
     return result
@@ -415,46 +422,46 @@ find_emtf_zones = find_emtf_zones_initializer()
 # Assign EMTF timezones
 def find_emtf_timezones_lut():
   default_value = -99
-  lut = np.full((19,3,2), default_value, dtype=np.int32)  # (ri_layer,timezone) -> (min_bx,max_bx)
-  lut[0,1] = -1,0    # ME1/1
-  lut[1,1] = -1,0    # ME1/2
-  lut[2,1] = -1,0    # ME1/3
-  lut[3,1] = -1,0    # ME2/1
-  lut[4,1] = -1,0    # ME2/2
-  lut[5,1] = -1,0    # ME3/1
-  lut[6,1] = -1,0    # ME3/2
-  lut[7,1] = -1,0    # ME4/1
-  lut[8,1] = -1,0    # ME4/2
-  lut[9,1] = 0,0     # GE1/1
-  lut[10,1] = 0,0    # RE1/2
-  lut[11,1] = 0,0    # RE1/3
-  lut[12,1] = 0,0    # GE2/1
-  lut[13,1] = 0,0    # RE2/2
-  lut[14,1] = 0,0    # RE3/1
-  lut[15,1] = 0,0    # RE3/2
-  lut[16,1] = 0,0    # RE4/1
-  lut[17,1] = 0,0    # RE4/2
-  lut[18,1] = 0,0    # ME0
+  lut = np.full((num_emtf_hosts, num_emtf_timezones, 2), default_value, dtype=np.int32)  # (host,timezone) -> (min_bx,max_bx)
+  lut[0,0] = -1,0  # ME1/1
+  lut[1,0] = -1,0  # ME1/2
+  lut[2,0] = -1,0  # ME1/3
+  lut[3,0] = -1,0  # ME2/1
+  lut[4,0] = -1,0  # ME2/2
+  lut[5,0] = -1,0  # ME3/1
+  lut[6,0] = -1,0  # ME3/2
+  lut[7,0] = -1,0  # ME4/1
+  lut[8,0] = -1,0  # ME4/2
+  lut[9,0] = 0,0   # GE1/1
+  lut[10,0] = 0,0  # RE1/2
+  lut[11,0] = 0,0  # RE1/3
+  lut[12,0] = 0,0  # GE2/1
+  lut[13,0] = 0,0  # RE2/2
+  lut[14,0] = 0,0  # RE3/1
+  lut[15,0] = 0,0  # RE3/2
+  lut[16,0] = 0,0  # RE4/1
+  lut[17,0] = 0,0  # RE4/2
+  lut[18,0] = 0,0  # ME0
   #
-  lut[:, 0] = lut[:, 1] - 1  # timezone 0 = timezone 1 - 1
-  lut[:, 2] = lut[:, 1] + 1  # timezone 2 = timezone 1 + 1
+  lut[:, 1] = lut[:, 0] - 1  # timezone 1 = timezone 0 - 1
+  lut[:, 2] = lut[:, 1] - 1  # timezone 2 = timezone 1 - 1
   return lut
 
 def find_emtf_timezones_initializer():
   lut = find_emtf_timezones_lut()
 
-  def lookup(ri_layer, bx):
-    ri_layer = np.asarray(ri_layer)
+  def lookup(emtf_host, bx):
+    emtf_host = np.asarray(emtf_host)
     bx = np.asarray(bx)
-    bounds = np.take(lut, ri_layer, axis=0)
+    bounds = np.take(lut, emtf_host, axis=0)
     # Create a boolean array representing the bits in a uint8 array. Set the last 3 bits.
     # Then, pack into a uint8 array
-    if ri_layer.ndim == 0:
+    if emtf_host.ndim == 0:
       result = np.zeros(8, dtype=np.bool)
       result[-3:] = (bounds[..., 0] <= bx) & (bx <= bounds[..., 1])
       result = np.packbits(result)
     else:
-      result = np.zeros(ri_layer.shape + (8,), dtype=np.bool)
+      result = np.zeros(emtf_host.shape + (8,), dtype=np.bool)
       result[..., -3:] = (bounds[..., 0] <= bx[:, np.newaxis]) & (bx[:, np.newaxis] <= bounds[..., 1])
       result = np.packbits(result)
     return result
@@ -463,16 +470,16 @@ def find_emtf_timezones_initializer():
 # The initializer will instantiate the lookup table
 find_emtf_timezones = find_emtf_timezones_initializer()
 
-# Encode EMTF zone image layer
-def find_emtf_zo_layer_lut():
-  # Layer ordering (closest to furthest):
-  # ME0, GE1/1, ME1/1,
-  # ME1/2, RE1,
+# Encode EMTF zone image row
+def find_emtf_img_row_lut():
+  # From closest to furthest:
+  # ME0
+  # GE1/1, ME1/1, ME1/2, RE1,
   # GE2/1, RE2, ME2,
   # ME3, RE3,
   # ME4, RE4,
   default_value = -99
-  lut = np.full((19,3), default_value, dtype=np.int32)  # (ri_layer,zone) -> zo_layer
+  lut = np.full((num_emtf_hosts, num_emtf_zones), default_value, dtype=np.int32)  # (host,zone) -> row
   lut[0,0] = 2   # ME1/1
   lut[3,0] = 4   # ME2/1
   lut[5,0] = 5   # ME3/1
@@ -508,34 +515,40 @@ def find_emtf_zo_layer_lut():
   lut[17,2] = 7  # RE4/2
   return lut
 
-def find_emtf_zo_layer_initializer():
-  lut = find_emtf_zo_layer_lut()
+def find_emtf_img_row_initializer():
+  lut = find_emtf_img_row_lut()
 
-  def lookup(ri_layer, zone):
-    ri_layer = np.asarray(ri_layer)
+  def lookup(emtf_host, zone):
+    emtf_host = np.asarray(emtf_host)
     zone = np.asarray(zone)
     if zone.ndim != 0:
       raise ValueError('zone should be a scalar.')
-    item = np.take(lut[:, zone], ri_layer)
+    item = np.take(lut[:, zone], emtf_host)
     return item
   return lookup
 
 # The initializer will instantiate the lookup table
-find_emtf_zo_layer = find_emtf_zo_layer_initializer()
+find_emtf_img_row = find_emtf_img_row_initializer()
 
-zo_layer_labels = [
+img_row_labels = np.array([
   ['ME0'  , 'GE1/1', 'ME1/1', 'GE2/1', 'ME2/1', 'ME3/1', 'RE3/1', 'ME4/1'],
   ['GE1/1', 'ME1/1', 'ME1/2', 'GE2/1', 'ME2/1', 'ME3/1', 'RE3/1', 'ME4/1'],
   ['ME1/2', 'RE1/2', 'RE2/2', 'ME2/2', 'ME3/2', 'RE3/2', 'ME4/2', 'RE4/2'],
-]
+], dtype=np.object)
 
-def find_emtf_zo_phi(emtf_phi):
+site_to_img_row_luts = np.array([
+  [2, 2, 4, 5, 7, 2, 4, 6, 7, 1, 3, 0],
+  [1, 2, 4, 5, 7, 2, 4, 6, 7, 0, 3, 0],
+  [0, 0, 3, 4, 6, 1, 2, 5, 7, 0, 3, 0],
+], dtype=np.int32)
+
+def find_emtf_img_col(emtf_phi):
   emtf_phi = np.asarray(emtf_phi)
   return (emtf_phi - min_emtf_strip) // coarse_emtf_strip
 
-def find_emtf_zo_phi_inverse(zo_phi):
-  zo_phi = np.asarray(zo_phi)
-  return (zo_phi * coarse_emtf_strip + coarse_emtf_strip // 2) + min_emtf_strip
+def find_emtf_img_col_inverse(emtf_img_col):
+  emtf_img_col = np.asarray(emtf_img_col)
+  return (emtf_img_col * coarse_emtf_strip) + (coarse_emtf_strip // 2) + min_emtf_strip
 
 # ______________________________________________________________________________
 def find_emtf_phi(hit):

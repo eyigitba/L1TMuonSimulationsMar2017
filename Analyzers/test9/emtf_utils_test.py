@@ -1,4 +1,4 @@
-"""Tests for functions in emtf_algos.py"""
+"""Tests for functions in emtf_utils.py"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -107,25 +107,25 @@ def test_get_trigger_sector():
   sectors_me22 = [6, 6, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6,]
 
   station, ring = 1, 1
-  assert [get_trigger_sector(ring, station, chamber) for chamber in range(1,36+1)] == sectors_me22
+  assert [get_trigger_sector(ring, station, chamber) for chamber in np.arange(1,36+1)] == sectors_me22
   station, ring = 1, 2
-  assert [get_trigger_sector(ring, station, chamber) for chamber in range(1,36+1)] == sectors_me22
+  assert [get_trigger_sector(ring, station, chamber) for chamber in np.arange(1,36+1)] == sectors_me22
   station, ring = 1, 3
-  assert [get_trigger_sector(ring, station, chamber) for chamber in range(1,36+1)] == sectors_me22
+  assert [get_trigger_sector(ring, station, chamber) for chamber in np.arange(1,36+1)] == sectors_me22
   station, ring = 1, 4
-  assert [get_trigger_sector(ring, station, chamber) for chamber in range(1,36+1)] == sectors_me22
+  assert [get_trigger_sector(ring, station, chamber) for chamber in np.arange(1,36+1)] == sectors_me22
   station, ring = 2, 1
-  assert [get_trigger_sector(ring, station, chamber) for chamber in range(1,18+1)] == sectors_me21
+  assert [get_trigger_sector(ring, station, chamber) for chamber in np.arange(1,18+1)] == sectors_me21
   station, ring = 2, 2
-  assert [get_trigger_sector(ring, station, chamber) for chamber in range(1,36+1)] == sectors_me22
+  assert [get_trigger_sector(ring, station, chamber) for chamber in np.arange(1,36+1)] == sectors_me22
   station, ring = 3, 1
-  assert [get_trigger_sector(ring, station, chamber) for chamber in range(1,18+1)] == sectors_me21
+  assert [get_trigger_sector(ring, station, chamber) for chamber in np.arange(1,18+1)] == sectors_me21
   station, ring = 3, 2
-  assert [get_trigger_sector(ring, station, chamber) for chamber in range(1,36+1)] == sectors_me22
+  assert [get_trigger_sector(ring, station, chamber) for chamber in np.arange(1,36+1)] == sectors_me22
   station, ring = 4, 1
-  assert [get_trigger_sector(ring, station, chamber) for chamber in range(1,18+1)] == sectors_me21
+  assert [get_trigger_sector(ring, station, chamber) for chamber in np.arange(1,18+1)] == sectors_me21
   station, ring = 4, 2
-  assert [get_trigger_sector(ring, station, chamber) for chamber in range(1,36+1)] == sectors_me22
+  assert [get_trigger_sector(ring, station, chamber) for chamber in np.arange(1,36+1)] == sectors_me22
 
 def test_get_trigger_subsector():
   subsectors_me1 = [2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2,]
@@ -133,25 +133,25 @@ def test_get_trigger_subsector():
   subsectors_me22 = [0] * 36
 
   station, ring = 1, 1
-  assert [get_trigger_subsector(ring, station, chamber) for chamber in range(1,36+1)] == subsectors_me1
+  assert [get_trigger_subsector(ring, station, chamber) for chamber in np.arange(1,36+1)] == subsectors_me1
   station, ring = 1, 2
-  assert [get_trigger_subsector(ring, station, chamber) for chamber in range(1,36+1)] == subsectors_me1
+  assert [get_trigger_subsector(ring, station, chamber) for chamber in np.arange(1,36+1)] == subsectors_me1
   station, ring = 1, 3
-  assert [get_trigger_subsector(ring, station, chamber) for chamber in range(1,36+1)] == subsectors_me1
+  assert [get_trigger_subsector(ring, station, chamber) for chamber in np.arange(1,36+1)] == subsectors_me1
   station, ring = 1, 4
-  assert [get_trigger_subsector(ring, station, chamber) for chamber in range(1,36+1)] == subsectors_me1
+  assert [get_trigger_subsector(ring, station, chamber) for chamber in np.arange(1,36+1)] == subsectors_me1
   station, ring = 2, 1
-  assert [get_trigger_subsector(ring, station, chamber) for chamber in range(1,18+1)] == subsectors_me21
+  assert [get_trigger_subsector(ring, station, chamber) for chamber in np.arange(1,18+1)] == subsectors_me21
   station, ring = 2, 2
-  assert [get_trigger_subsector(ring, station, chamber) for chamber in range(1,36+1)] == subsectors_me22
+  assert [get_trigger_subsector(ring, station, chamber) for chamber in np.arange(1,36+1)] == subsectors_me22
   station, ring = 3, 1
-  assert [get_trigger_subsector(ring, station, chamber) for chamber in range(1,18+1)] == subsectors_me21
+  assert [get_trigger_subsector(ring, station, chamber) for chamber in np.arange(1,18+1)] == subsectors_me21
   station, ring = 3, 2
-  assert [get_trigger_subsector(ring, station, chamber) for chamber in range(1,36+1)] == subsectors_me22
+  assert [get_trigger_subsector(ring, station, chamber) for chamber in np.arange(1,36+1)] == subsectors_me22
   station, ring = 4, 1
-  assert [get_trigger_subsector(ring, station, chamber) for chamber in range(1,18+1)] == subsectors_me21
+  assert [get_trigger_subsector(ring, station, chamber) for chamber in np.arange(1,18+1)] == subsectors_me21
   station, ring = 4, 2
-  assert [get_trigger_subsector(ring, station, chamber) for chamber in range(1,36+1)] == subsectors_me22
+  assert [get_trigger_subsector(ring, station, chamber) for chamber in np.arange(1,36+1)] == subsectors_me22
 
 def test_get_trigger_cscid():
   cscids_me11 = [2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1,]
@@ -161,25 +161,25 @@ def test_get_trigger_cscid():
   cscids_me22 = [8, 9, 4, 5, 6, 7, 8, 9, 4, 5, 6, 7, 8, 9, 4, 5, 6, 7, 8, 9, 4, 5, 6, 7, 8, 9, 4, 5, 6, 7, 8, 9, 4, 5, 6, 7,]
 
   station, ring = 1, 1
-  assert [get_trigger_cscid(ring, station, chamber) for chamber in range(1,36+1)] == cscids_me11
+  assert [get_trigger_cscid(ring, station, chamber) for chamber in np.arange(1,36+1)] == cscids_me11
   station, ring = 1, 2
-  assert [get_trigger_cscid(ring, station, chamber) for chamber in range(1,36+1)] == cscids_me12
+  assert [get_trigger_cscid(ring, station, chamber) for chamber in np.arange(1,36+1)] == cscids_me12
   station, ring = 1, 3
-  assert [get_trigger_cscid(ring, station, chamber) for chamber in range(1,36+1)] == cscids_me13
+  assert [get_trigger_cscid(ring, station, chamber) for chamber in np.arange(1,36+1)] == cscids_me13
   station, ring = 1, 4
-  assert [get_trigger_cscid(ring, station, chamber) for chamber in range(1,36+1)] == cscids_me11
+  assert [get_trigger_cscid(ring, station, chamber) for chamber in np.arange(1,36+1)] == cscids_me11
   station, ring = 2, 1
-  assert [get_trigger_cscid(ring, station, chamber) for chamber in range(1,18+1)] == cscids_me21
+  assert [get_trigger_cscid(ring, station, chamber) for chamber in np.arange(1,18+1)] == cscids_me21
   station, ring = 2, 2
-  assert [get_trigger_cscid(ring, station, chamber) for chamber in range(1,36+1)] == cscids_me22
+  assert [get_trigger_cscid(ring, station, chamber) for chamber in np.arange(1,36+1)] == cscids_me22
   station, ring = 3, 1
-  assert [get_trigger_cscid(ring, station, chamber) for chamber in range(1,18+1)] == cscids_me21
+  assert [get_trigger_cscid(ring, station, chamber) for chamber in np.arange(1,18+1)] == cscids_me21
   station, ring = 3, 2
-  assert [get_trigger_cscid(ring, station, chamber) for chamber in range(1,36+1)] == cscids_me22
+  assert [get_trigger_cscid(ring, station, chamber) for chamber in np.arange(1,36+1)] == cscids_me22
   station, ring = 4, 1
-  assert [get_trigger_cscid(ring, station, chamber) for chamber in range(1,18+1)] == cscids_me21
+  assert [get_trigger_cscid(ring, station, chamber) for chamber in np.arange(1,18+1)] == cscids_me21
   station, ring = 4, 2
-  assert [get_trigger_cscid(ring, station, chamber) for chamber in range(1,36+1)] == cscids_me22
+  assert [get_trigger_cscid(ring, station, chamber) for chamber in np.arange(1,36+1)] == cscids_me22
 
 def test_get_trigger_neighid():
   neighids_me1 = [0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,]
@@ -187,25 +187,25 @@ def test_get_trigger_neighid():
   neighids_me22 = neighids_me1
 
   station, ring = 1, 1
-  assert [get_trigger_neighid(ring, station, chamber) for chamber in range(1,36+1)] == neighids_me1
+  assert [get_trigger_neighid(ring, station, chamber) for chamber in np.arange(1,36+1)] == neighids_me1
   station, ring = 1, 2
-  assert [get_trigger_neighid(ring, station, chamber) for chamber in range(1,36+1)] == neighids_me1
+  assert [get_trigger_neighid(ring, station, chamber) for chamber in np.arange(1,36+1)] == neighids_me1
   station, ring = 1, 3
-  assert [get_trigger_neighid(ring, station, chamber) for chamber in range(1,36+1)] == neighids_me1
+  assert [get_trigger_neighid(ring, station, chamber) for chamber in np.arange(1,36+1)] == neighids_me1
   station, ring = 1, 4
-  assert [get_trigger_neighid(ring, station, chamber) for chamber in range(1,36+1)] == neighids_me1
+  assert [get_trigger_neighid(ring, station, chamber) for chamber in np.arange(1,36+1)] == neighids_me1
   station, ring = 2, 1
-  assert [get_trigger_neighid(ring, station, chamber) for chamber in range(1,18+1)] == neighids_me21
+  assert [get_trigger_neighid(ring, station, chamber) for chamber in np.arange(1,18+1)] == neighids_me21
   station, ring = 2, 2
-  assert [get_trigger_neighid(ring, station, chamber) for chamber in range(1,36+1)] == neighids_me22
+  assert [get_trigger_neighid(ring, station, chamber) for chamber in np.arange(1,36+1)] == neighids_me22
   station, ring = 3, 1
-  assert [get_trigger_neighid(ring, station, chamber) for chamber in range(1,18+1)] == neighids_me21
+  assert [get_trigger_neighid(ring, station, chamber) for chamber in np.arange(1,18+1)] == neighids_me21
   station, ring = 3, 2
-  assert [get_trigger_neighid(ring, station, chamber) for chamber in range(1,36+1)] == neighids_me22
+  assert [get_trigger_neighid(ring, station, chamber) for chamber in np.arange(1,36+1)] == neighids_me22
   station, ring = 4, 1
-  assert [get_trigger_neighid(ring, station, chamber) for chamber in range(1,18+1)] == neighids_me21
+  assert [get_trigger_neighid(ring, station, chamber) for chamber in np.arange(1,18+1)] == neighids_me21
   station, ring = 4, 2
-  assert [get_trigger_neighid(ring, station, chamber) for chamber in range(1,36+1)] == neighids_me22
+  assert [get_trigger_neighid(ring, station, chamber) for chamber in np.arange(1,36+1)] == neighids_me22
 
 def test_get_trigger_endsec():
-  assert [get_trigger_endsec(endcap, sector) for endcap in [1, -1] for sector in [1, 2, 3, 4, 5, 6]] == list(range(12))
+  assert [get_trigger_endsec(endcap, sector) for endcap in [1, -1] for sector in [1, 2, 3, 4, 5, 6]] == list(np.arange(12))

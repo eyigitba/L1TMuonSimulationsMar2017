@@ -108,24 +108,24 @@ class ZoneAnalysis(_BaseAnalysis):
     out_hits_zone = out_hits[:, out_hits_metadata['zone']]
     out_hits_emtf_theta = out_hits[:, out_hits_metadata['emtf_theta']]
 
-    out_hits_ri_layers = find_emtf_ri_layer(out_hits_type, out_hits_station, out_hits_ring)
-    assert (out_hits_ri_layers != -99).all()
+    out_hits_emtf_host = find_emtf_host(out_hits_type, out_hits_station, out_hits_ring)
+    assert (out_hits_emtf_host != -99).all()
 
     print('Find zone boundaries')
     n_zones = len(emtf_eta_bins) - 1
     for zone in range(n_zones):
       sel = (out_hits_zone == zone)
-      out_hits_ri_layers_sel = out_hits_ri_layers[sel]
+      out_hits_emtf_host_sel = out_hits_emtf_host[sel]
       out_hits_emtf_theta_sel = out_hits_emtf_theta[sel]
-      layers = np.unique(out_hits_ri_layers_sel)
+      out_hits_emtf_host_uniq = np.unique(out_hits_emtf_host_sel)
 
-      for lay in layers:
-        sel1 = (out_hits_ri_layers_sel == lay)
-        out_hits_emtf_theta_sel1 = out_hits_emtf_theta_sel[sel1]
-        n = len(out_hits_emtf_theta_sel1)
+      for emtf_host in out_hits_emtf_host_uniq:
+        sel_1 = (out_hits_emtf_host_sel == emtf_host)
+        out_hits_emtf_theta_sel_1 = out_hits_emtf_theta_sel[sel_1]
+        n = len(out_hits_emtf_theta_sel_1)
         if n > 100:
-          p = np.percentile(out_hits_emtf_theta_sel1, [1,2,2.5,3,97,97.5,98,99], overwrite_input=True)
-          print(zone, '%03i' % lay, '%5i' % n, p[:4], p[4:])
+          p = np.percentile(out_hits_emtf_theta_sel_1, [1,2,2.5,3,97,97.5,98,99], overwrite_input=True)
+          print(zone, '%03i' % emtf_host, '%5i' % n, p[:4], p[4:])
 
     # Done
     return
@@ -182,7 +182,7 @@ class ChamberAnalysis(_BaseAnalysis):
 
           # If neighbor, share simhit with the neighbor sector
           if simhit.neighid == 1:
-            get_next_sector = lambda sector: sector + 1 if sector != 6 else 1
+            get_next_sector = lambda sector: (sector + 1) if sector != 6 else (sector + 1 - 6)
             simhit.neighbor = 1
             simhit.sector = get_next_sector(simhit.sector)
             out_simhits.append([simhit.type, simhit.station, get_trigger_endsec(simhit.endcap, simhit.sector), simhit.subsector, simhit.cscid, simhit.neighbor, simhit.bx, ievt])

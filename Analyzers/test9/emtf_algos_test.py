@@ -16,65 +16,65 @@ from emtf_algos import *
 
 
 # ______________________________________________________________________________
-def test_find_emtf_layer():
+def test_find_emtf_site():
   _type, station, ring = 1, 1, 4
-  assert find_emtf_layer(_type, station, ring) == 0
+  assert find_emtf_site(_type, station, ring) == 0
 
   _type, station, ring = 3, 1, 1
-  assert find_emtf_layer(_type, station, ring) == 9
+  assert find_emtf_site(_type, station, ring) == 9
 
   _type, station, ring = 2, 2, 2
-  assert find_emtf_layer(_type, station, ring) == 6
+  assert find_emtf_site(_type, station, ring) == 6
 
   _type, station, ring = 2, 1, 1
-  assert find_emtf_layer(_type, station, ring) == -99
+  assert find_emtf_site(_type, station, ring) == -99
 
   _type, station, ring = 4, 4, 1
-  assert find_emtf_layer(_type, station, ring) == -99
+  assert find_emtf_site(_type, station, ring) == -99
 
   with pytest.raises(ValueError):
     _type, station, ring = 5, 5, 5
-    find_emtf_layer(_type, station, ring)
+    find_emtf_site(_type, station, ring)
 
   _type = np.array([1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,3,3,4])
   station = np.array([1,1,1,1,2,2,3,3,4,4,1,1,2,2,3,3,3,4,4,4,1,2,1])
   ring = np.array([4,1,2,3,1,2,1,2,1,2,2,3,2,3,1,2,3,1,2,3,1,1,1])
   answer = np.array([0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,7,8,8,8,9,10,11])
-  assert (find_emtf_layer(_type, station, ring) == answer).all()
+  assert (find_emtf_site(_type, station, ring) == answer).all()
 
-def test_find_emtf_ri_layer():
+def test_find_emtf_host():
   _type, station, ring = 1, 1, 4
-  assert find_emtf_ri_layer(_type, station, ring) == 0
+  assert find_emtf_host(_type, station, ring) == 0
 
   _type, station, ring = 3, 1, 1
-  assert find_emtf_ri_layer(_type, station, ring) == 9
+  assert find_emtf_host(_type, station, ring) == 9
 
   _type, station, ring = 2, 2, 2
-  assert find_emtf_ri_layer(_type, station, ring) == 13
+  assert find_emtf_host(_type, station, ring) == 13
 
   _type, station, ring = 2, 1, 1
-  assert find_emtf_ri_layer(_type, station, ring) == -99
+  assert find_emtf_host(_type, station, ring) == -99
 
   _type, station, ring = 4, 4, 1
-  assert find_emtf_ri_layer(_type, station, ring) == -99
+  assert find_emtf_host(_type, station, ring) == -99
 
   with pytest.raises(ValueError):
     _type, station, ring = 5, 5, 5
-    find_emtf_layer(_type, station, ring)
+    find_emtf_site(_type, station, ring)
 
   _type = np.array([1,1,1,1,1,1,1,1,1,1,3,2,2,3,2,2,2,2,2,2,2,2,4])
   station = np.array([1,1,1,1,2,2,3,3,4,4,1,1,1,2,2,2,3,3,3,4,4,4,1])
   ring = np.array([4,1,2,3,1,2,1,2,1,2,1,2,3,1,2,3,1,2,3,1,2,3,1])
   answer = np.array([0,0,1,2,3,4,5,6,7,8,9,10,11,12,13,13,14,15,15,16,17,17,18])
-  assert (find_emtf_ri_layer(_type, station, ring) == answer).all()
+  assert (find_emtf_host(_type, station, ring) == answer).all()
 
-def test_decode_emtf_layer():
-  assert decode_emtf_layer(0) == (1, 1, 1)
-  assert decode_emtf_layer(9) == (3, 1, 1)
-  assert decode_emtf_layer(6) == (2, 2, 2)
+def test_decode_emtf_site():
+  assert decode_emtf_site(0) == (1, 1, 1)
+  assert decode_emtf_site(9) == (3, 1, 1)
+  assert decode_emtf_site(6) == (2, 2, 2)
 
-  emtf_layers = np.arange(12)
-  result = decode_emtf_layer(emtf_layers)
+  emtf_site = np.arange(num_emtf_sites)
+  result = decode_emtf_site(emtf_site)
   _type = np.array([1,1,1,1,1,2,2,2,2,3,3,4])
   station = np.array([1,1,2,3,4,1,2,3,4,1,2,1])
   ring = np.array([1,2,1,1,1,2,2,1,1,1,1,1])
@@ -82,13 +82,13 @@ def test_decode_emtf_layer():
   assert (result[1] == station).all()
   assert (result[2] == ring).all()
 
-def test_decode_emtf_ri_layer():
-  assert decode_emtf_ri_layer(0) == (1, 1, 1)
-  assert decode_emtf_ri_layer(9) == (3, 1, 1)
-  assert decode_emtf_ri_layer(13) == (2, 2, 2)
+def test_decode_emtf_host():
+  assert decode_emtf_host(0) == (1, 1, 1)
+  assert decode_emtf_host(9) == (3, 1, 1)
+  assert decode_emtf_host(13) == (2, 2, 2)
 
-  emtf_ri_layers = np.arange(19)
-  result = decode_emtf_ri_layer(emtf_ri_layers)
+  emtf_host = np.arange(num_emtf_hosts)
+  result = decode_emtf_host(emtf_host)
   _type = np.array([1,1,1,1,1,1,1,1,1,3,2,2,3,2,2,2,2,2,4])
   station = np.array([1,1,1,2,2,3,3,4,4,1,1,1,2,2,3,3,4,4,1])
   ring = np.array([1,2,3,1,2,1,2,1,2,1,2,3,1,2,1,2,1,2,1])
@@ -140,112 +140,132 @@ def test_find_emtf_zones():
   def packbits(a, b, c):
     return (a*4) + (b*2) + (c*1)
 
-  ri_layer, emtf_theta = 0, 10
-  assert find_emtf_zones(ri_layer, emtf_theta) == packbits(1, 0, 0)
+  emtf_host, emtf_theta = 0, 10
+  assert find_emtf_zones(emtf_host, emtf_theta) == packbits(1, 0, 0)
 
-  ri_layer, emtf_theta = 18, 10
-  assert find_emtf_zones(ri_layer, emtf_theta) == packbits(1, 0, 0)
+  emtf_host, emtf_theta = 18, 10
+  assert find_emtf_zones(emtf_host, emtf_theta) == packbits(1, 0, 0)
 
   with pytest.raises(IndexError):
-    ri_layer, emtf_theta = 99, 10
-    find_emtf_zones(ri_layer, emtf_theta)
+    emtf_host, emtf_theta = 99, 10
+    find_emtf_zones(emtf_host, emtf_theta)
 
-  ri_layer = np.array([0,1,2,3,4,5,6,7,8])
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
   emtf_theta = np.array([10]*9)
   answer = np.array([4,0,0,4,0,4,0,4,0])
-  assert (find_emtf_zones(ri_layer, emtf_theta) == answer).all()
+  assert (find_emtf_zones(emtf_host, emtf_theta) == answer).all()
 
-  ri_layer = np.array([0,1,2,3,4,5,6,7,8])
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
   emtf_theta = np.array([25]*9)
   answer = np.array([6,0,0,6,0,6,0,6,0])
-  assert (find_emtf_zones(ri_layer, emtf_theta) == answer).all()
+  assert (find_emtf_zones(emtf_host, emtf_theta) == answer).all()
 
-  ri_layer = np.array([0,1,2,3,4,5,6,7,8])
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
   emtf_theta = np.array([46]*9)
   answer = np.array([2,2,0,2,0,0,2,0,2])
-  assert (find_emtf_zones(ri_layer, emtf_theta) == answer).all()
+  assert (find_emtf_zones(emtf_host, emtf_theta) == answer).all()
 
-  ri_layer = np.array([0,1,2,3,4,5,6,7,8])
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
   emtf_theta = np.array([53]*9)
   answer = np.array([2,3,0,0,1,0,3,0,3])
-  assert (find_emtf_zones(ri_layer, emtf_theta) == answer).all()
+  assert (find_emtf_zones(emtf_host, emtf_theta) == answer).all()
 
-  ri_layer = np.array([0,1,2,3,4,5,6,7,8])
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
   emtf_theta = np.array([84]*9)
   answer = np.array([0,1,0,0,1,0,1,0,1])
-  assert (find_emtf_zones(ri_layer, emtf_theta) == answer).all()
+  assert (find_emtf_zones(emtf_host, emtf_theta) == answer).all()
 
 def test_find_emtf_timezones():
   def packbits(a, b, c):
     return (a*4) + (b*2) + (c*1)
 
-  ri_layer, bx = 0, -1
-  assert find_emtf_timezones(ri_layer, bx) == packbits(1, 1, 0)
+  emtf_host, bx = 0, -1
+  assert find_emtf_timezones(emtf_host, bx) == packbits(1, 1, 0)
 
-  ri_layer, bx = 0, 0
-  assert find_emtf_timezones(ri_layer, bx) == packbits(0, 1, 1)
+  emtf_host, bx = 0, 0
+  assert find_emtf_timezones(emtf_host, bx) == packbits(1, 0, 0)
 
-  ri_layer, bx = 0, 1
-  assert find_emtf_timezones(ri_layer, bx) == packbits(0, 0, 1)
+  emtf_host, bx = 0, 1
+  assert find_emtf_timezones(emtf_host, bx) == packbits(0, 0, 0)
 
   with pytest.raises(IndexError):
-    ri_layer, bx = 99, -1
-    find_emtf_zones(ri_layer, bx)
+    emtf_host, bx = 99, -1
+    find_emtf_zones(emtf_host, bx)
 
-  ri_layer = np.array([0,1,2,3,4,5,6,7,8])
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
   bx = np.array([-1]*9)
   answer = np.array([6]*9)
-  assert (find_emtf_timezones(ri_layer, bx) == answer).all()
+  assert (find_emtf_timezones(emtf_host, bx) == answer).all()
 
-  ri_layer = np.array([0,1,2,3,4,5,6,7,8])
+  emtf_host = np.array([9,10,11,12,13,14,15,16,17,18])
+  bx = np.array([-1]*10)
+  answer = np.array([2]*10)
+  assert (find_emtf_timezones(emtf_host, bx) == answer).all()
+
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
   bx = np.array([0]*9)
-  answer = np.array([3]*9)
-  assert (find_emtf_timezones(ri_layer, bx) == answer).all()
+  answer = np.array([4]*9)
+  assert (find_emtf_timezones(emtf_host, bx) == answer).all()
 
-  ri_layer = np.array([9,10,11,12,13,14,15,16,17])
-  bx = np.array([0]*9)
-  answer = np.array([2]*9)
-  assert (find_emtf_timezones(ri_layer, bx) == answer).all()
+  emtf_host = np.array([9,10,11,12,13,14,15,16,17,18])
+  bx = np.array([0]*10)
+  answer = np.array([4]*10)
+  assert (find_emtf_timezones(emtf_host, bx) == answer).all()
 
-def test_find_emtf_zo_layer():
-  ri_layer, zone = 0, 0
-  assert find_emtf_zo_layer(ri_layer, zone) == 2
+def test_find_emtf_img_row():
+  emtf_host, zone = 0, 0
+  assert find_emtf_img_row(emtf_host, zone) == 2
 
-  ri_layer = np.array([0,1,2,3,4,5,6,7,8])
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
   zone = 0
   answer = np.array([2,-99,-99,4,-99,5,-99,7,-99])
-  assert (find_emtf_zo_layer(ri_layer, zone) == answer).all()
+  assert (find_emtf_img_row(emtf_host, zone) == answer).all()
 
-  ri_layer = np.array([0,1,2,3,4,5,6,7,8])
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
   zone = 1
   answer = np.array([1,2,-99,4,-99,5,5,7,7])
-  assert (find_emtf_zo_layer(ri_layer, zone) == answer).all()
+  assert (find_emtf_img_row(emtf_host, zone) == answer).all()
 
-  ri_layer = np.array([0,1,2,3,4,5,6,7,8])
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
   zone = 2
   answer = np.array([-99,0,-99,-99,3,-99,4,-99,6])
-  assert (find_emtf_zo_layer(ri_layer, zone) == answer).all()
+  assert (find_emtf_img_row(emtf_host, zone) == answer).all()
 
-def test_chamber_to_ri_layer_lut():
+def test_find_emtf_img_col():
+  emtf_phi = 0
+  assert find_emtf_img_col(emtf_phi) == -min_emtf_strip / coarse_emtf_strip
+
+  emtf_phi = min_emtf_strip
+  assert find_emtf_img_col(emtf_phi) == 0
+
+  emtf_phi = min_emtf_strip + coarse_emtf_strip
+  assert find_emtf_img_col(emtf_phi) == 1
+
+  emtf_phi = max_emtf_strip - 1
+  assert find_emtf_img_col(emtf_phi) == (num_coarse_emtf_strips - 1)
+
+  emtf_phi = 3600
+  assert find_emtf_img_col_inverse(find_emtf_img_col(emtf_phi)) == emtf_phi + (coarse_emtf_strip // 2)
+
+def test_chamber_to_host_lut():
   # Given y = F(x), find x = F^{-1}(y). F is assumed to be a LUT.
   inverse_fn = lambda F, y: [[i for (i, y_i) in enumerate(F) if y_i == y_j] for y_j in y]
   to_array = lambda x: np.asarray([np.asarray(x_i) for x_i in x])
   to_list = lambda x: [x_i.tolist() for x_i in x]
   flatten = lambda x: np.asarray([x_i_i for x_i in x for x_i_i in x_i])
 
-  num_emtf_ri_layers = 19
-  ri_layer_to_chamber_lut = to_array(inverse_fn(chamber_to_ri_layer_lut, range(num_emtf_ri_layers)))
-  ri_layer_to_chamber_lut_flat = flatten(ri_layer_to_chamber_lut)
+  host_to_chamber_lut = to_array(inverse_fn(chamber_to_host_lut, np.arange(num_emtf_hosts)))
+  host_to_chamber_lut_flat = flatten(host_to_chamber_lut)
 
-  assert len(chamber_to_ri_layer_lut) == num_emtf_chambers
-  assert len(ri_layer_to_chamber_lut) == num_emtf_ri_layers
-  assert len(ri_layer_to_chamber_lut_flat) == num_emtf_chambers
-  assert sorted(ri_layer_to_chamber_lut_flat.tolist()) == list(range(num_emtf_chambers))
+  assert len(chamber_to_host_lut) == num_emtf_chambers
+  assert len(host_to_chamber_lut) == num_emtf_hosts
+  assert len(host_to_chamber_lut_flat) == num_emtf_chambers
+  assert sorted(host_to_chamber_lut_flat.tolist()) == list(np.arange(num_emtf_chambers))
 
   # ME1/1, ME1/2, ME1/3, ME2/1, ME2/2, ME3/1, ME3/2, ME4/1, ME4/2,
   # GE1/1, RE1/2, RE1/3, GE2/1, RE2/2, RE3/1, RE3/2, RE4/1, RE4/2,
   # ME0
-  ri_layer_to_chamber_lut_answer = [
+  host_to_chamber_lut_answer = [
     [  0,  1,  2,  9, 10, 11, 45,],
     [  3,  4,  5, 12, 13, 14, 46,],
     [  6,  7,  8, 15, 16, 17, 47,],
@@ -266,34 +286,34 @@ def test_chamber_to_ri_layer_lut():
     [ 93, 94, 95, 96, 97, 98,107,],
     [108,109,110,111,112,113,114,],
   ]
-  assert to_list(ri_layer_to_chamber_lut) == ri_layer_to_chamber_lut_answer
+  assert to_list(host_to_chamber_lut) == host_to_chamber_lut_answer
 
   # Further tests (zone 0)
   zone = 0
-  num_emtf_zo_layers = 8
-  ri_layer_to_zo_layer_lut = find_emtf_zo_layer_lut()[:, zone]
-  zo_layer_to_ri_layer_lut = to_array(inverse_fn(ri_layer_to_zo_layer_lut, range(num_emtf_zo_layers)))
+  num_emtf_img_rows = 8
+  host_to_img_row_lut = find_emtf_img_row_lut()[:, zone]
+  img_row_to_host_lut = to_array(inverse_fn(host_to_img_row_lut, np.arange(num_emtf_img_rows)))
 
   # ME0, GE1/1, ME1/1, GE2/1, ME2/1, ME3/1, RE3/1, ME4/1
-  zo_layer_to_ri_layer_lut_answer = [[18], [9], [0], [12], [3], [5], [14], [7, 16]]
-  assert to_list(zo_layer_to_ri_layer_lut) == zo_layer_to_ri_layer_lut_answer
+  img_row_to_host_lut_answer = [[18], [9], [0], [12], [3], [5], [14], [7, 16]]
+  assert to_list(img_row_to_host_lut) == img_row_to_host_lut_answer
 
-  ri_layer_to_zo_bounds_lut_0 = find_emtf_zones_lut()[:, zone, 0]
-  ri_layer_to_zo_bounds_lut_1 = find_emtf_zones_lut()[:, zone, 1]
-  zo_layer_to_chamber_lut = to_array([
-      [c for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
-      for ri_layers in zo_layer_to_ri_layer_lut
+  host_to_zone_bounds_lut_0 = find_emtf_zones_lut()[:, zone, 0]
+  host_to_zone_bounds_lut_1 = find_emtf_zones_lut()[:, zone, 1]
+  img_row_to_chamber_lut = to_array([
+      [c for host in hosts for c in host_to_chamber_lut[host]] \
+      for hosts in img_row_to_host_lut
   ])
-  zo_layer_to_zo_bounds_lut_0 = to_array([
-      [ri_layer_to_zo_bounds_lut_0[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
-      for ri_layers in zo_layer_to_ri_layer_lut
+  img_row_to_zone_bounds_lut_0 = to_array([
+      [host_to_zone_bounds_lut_0[host] for host in hosts for c in host_to_chamber_lut[host]] \
+      for hosts in img_row_to_host_lut
   ])
-  zo_layer_to_zo_bounds_lut_1 = to_array([
-      [ri_layer_to_zo_bounds_lut_1[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
-      for ri_layers in zo_layer_to_ri_layer_lut
+  img_row_to_zone_bounds_lut_1 = to_array([
+      [host_to_zone_bounds_lut_1[host] for host in hosts for c in host_to_chamber_lut[host]] \
+      for hosts in img_row_to_host_lut
   ])
 
-  zo_layer_to_chamber_lut_answer = [
+  img_row_to_chamber_lut_answer = [
     [108, 109, 110, 111, 112, 113, 114],
     [ 54,  55,  56,  63,  64,  65,  99],
     [  0,   1,   2,   9,  10,  11,  45],
@@ -303,9 +323,9 @@ def test_chamber_to_ri_layer_lut():
     [ 81,  82,  83, 104],
     [ 36,  37,  38,  52,  90,  91,  92, 106],
   ]
-  assert to_list(zo_layer_to_chamber_lut) == zo_layer_to_chamber_lut_answer
+  assert to_list(img_row_to_chamber_lut) == img_row_to_chamber_lut_answer
 
-  zo_layer_to_zo_bounds_lut_0_answer = [
+  img_row_to_zone_bounds_lut_0_answer = [
     [ 4,  4,  4,  4,  4,  4,  4],
     [17, 17, 17, 17, 17, 17, 17],
     [ 4,  4,  4,  4,  4,  4,  4],
@@ -315,9 +335,9 @@ def test_chamber_to_ri_layer_lut():
     [ 4,  4,  4,  4],
     [ 4,  4,  4,  4,  4,  4,  4,  4],
   ]
-  assert to_list(zo_layer_to_zo_bounds_lut_0) == zo_layer_to_zo_bounds_lut_0_answer
+  assert to_list(img_row_to_zone_bounds_lut_0) == img_row_to_zone_bounds_lut_0_answer
 
-  zo_layer_to_zo_bounds_lut_1_answer = [
+  img_row_to_zone_bounds_lut_1_answer = [
     [23, 23, 23, 23, 23, 23, 23],
     [26, 26, 26, 26, 26, 26, 26],
     [26, 26, 26, 26, 26, 26, 26],
@@ -327,34 +347,34 @@ def test_chamber_to_ri_layer_lut():
     [25, 25, 25, 25],
     [25, 25, 25, 25, 25, 25, 25, 25],
   ]
-  assert to_list(zo_layer_to_zo_bounds_lut_1) == zo_layer_to_zo_bounds_lut_1_answer
+  assert to_list(img_row_to_zone_bounds_lut_1) == img_row_to_zone_bounds_lut_1_answer
 
   # Further tests (zone 1)
   zone = 1
-  num_emtf_zo_layers = 8
-  ri_layer_to_zo_layer_lut = find_emtf_zo_layer_lut()[:, zone]
-  zo_layer_to_ri_layer_lut = to_array(inverse_fn(ri_layer_to_zo_layer_lut, range(num_emtf_zo_layers)))
+  num_emtf_img_rows = 8
+  host_to_img_row_lut = find_emtf_img_row_lut()[:, zone]
+  img_row_to_host_lut = to_array(inverse_fn(host_to_img_row_lut, np.arange(num_emtf_img_rows)))
 
   # GE1/1, ME1/1, ME1/2, GE2/1, ME2/1, ME3/1, RE3/1, ME4/1
-  zo_layer_to_ri_layer_lut_answer = [[9], [0], [1, 10], [12], [3], [5, 6], [14, 15], [7, 8, 16, 17]]
-  assert to_list(zo_layer_to_ri_layer_lut) == zo_layer_to_ri_layer_lut_answer
+  img_row_to_host_lut_answer = [[9], [0], [1, 10], [12], [3], [5, 6], [14, 15], [7, 8, 16, 17]]
+  assert to_list(img_row_to_host_lut) == img_row_to_host_lut_answer
 
-  ri_layer_to_zo_bounds_lut_0 = find_emtf_zones_lut()[:, zone, 0]
-  ri_layer_to_zo_bounds_lut_1 = find_emtf_zones_lut()[:, zone, 1]
-  zo_layer_to_chamber_lut = to_array([
-      [c for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
-      for ri_layers in zo_layer_to_ri_layer_lut
+  host_to_zone_bounds_lut_0 = find_emtf_zones_lut()[:, zone, 0]
+  host_to_zone_bounds_lut_1 = find_emtf_zones_lut()[:, zone, 1]
+  img_row_to_chamber_lut = to_array([
+      [c for host in hosts for c in host_to_chamber_lut[host]] \
+      for hosts in img_row_to_host_lut
   ])
-  zo_layer_to_zo_bounds_lut_0 = to_array([
-      [ri_layer_to_zo_bounds_lut_0[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
-      for ri_layers in zo_layer_to_ri_layer_lut
+  img_row_to_zone_bounds_lut_0 = to_array([
+      [host_to_zone_bounds_lut_0[host] for host in hosts for c in host_to_chamber_lut[host]] \
+      for hosts in img_row_to_host_lut
   ])
-  zo_layer_to_zo_bounds_lut_1 = to_array([
-      [ri_layer_to_zo_bounds_lut_1[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
-      for ri_layers in zo_layer_to_ri_layer_lut
+  img_row_to_zone_bounds_lut_1 = to_array([
+      [host_to_zone_bounds_lut_1[host] for host in hosts for c in host_to_chamber_lut[host]] \
+      for hosts in img_row_to_host_lut
   ])
 
-  zo_layer_to_chamber_lut_answer = [
+  img_row_to_chamber_lut_answer = [
     [ 54,  55,  56,  63,  64,  65,  99],
     [  0,   1,   2,   9,  10,  11,  45],
     [  3,   4,   5,  12,  13,  14,  46,  57,  58,  59,  66,  67,  68, 100],
@@ -364,9 +384,9 @@ def test_chamber_to_ri_layer_lut():
     [ 81,  82,  83, 104,  84,  85,  86,  87,  88,  89, 105],
     [ 36,  37,  38,  52,  39,  40,  41,  42,  43,  44,  53,  90,  91, 92, 106,  93,  94,  95,  96,  97,  98, 107],
   ]
-  assert to_list(zo_layer_to_chamber_lut) == zo_layer_to_chamber_lut_answer
+  assert to_list(img_row_to_chamber_lut) == img_row_to_chamber_lut_answer
 
-  zo_layer_to_zo_bounds_lut_0_answer = [
+  img_row_to_zone_bounds_lut_0_answer = [
     [24, 24, 24, 24, 24, 24, 24],
     [24, 24, 24, 24, 24, 24, 24],
     [46, 46, 46, 46, 46, 46, 46, 52, 52, 52, 52, 52, 52, 52],
@@ -376,9 +396,9 @@ def test_chamber_to_ri_layer_lut():
     [23, 23, 23, 23, 40, 40, 40, 40, 40, 40, 40],
     [23, 23, 23, 23, 38, 38, 38, 38, 38, 38, 38, 23, 23, 23, 23, 36, 36, 36, 36, 36, 36, 36],
   ]
-  assert to_list(zo_layer_to_zo_bounds_lut_0) == zo_layer_to_zo_bounds_lut_0_answer
+  assert to_list(img_row_to_zone_bounds_lut_0) == img_row_to_zone_bounds_lut_0_answer
 
-  zo_layer_to_zo_bounds_lut_1_answer = [
+  img_row_to_zone_bounds_lut_1_answer = [
     [52, 52, 52, 52, 52, 52, 52],
     [53, 53, 53, 53, 53, 53, 53],
     [54, 54, 54, 54, 54, 54, 54, 56, 56, 56, 56, 56, 56, 56],
@@ -388,34 +408,34 @@ def test_chamber_to_ri_layer_lut():
     [36, 36, 36, 36, 52, 52, 52, 52, 52, 52, 52],
     [35, 35, 35, 35, 54, 54, 54, 54, 54, 54, 54, 31, 31, 31, 31, 52, 52, 52, 52, 52, 52, 52],
   ]
-  assert to_list(zo_layer_to_zo_bounds_lut_1) == zo_layer_to_zo_bounds_lut_1_answer
+  assert to_list(img_row_to_zone_bounds_lut_1) == img_row_to_zone_bounds_lut_1_answer
 
-  # Further tests (zone 1)
+  # Further tests (zone 2)
   zone = 2
-  num_emtf_zo_layers = 8
-  ri_layer_to_zo_layer_lut = find_emtf_zo_layer_lut()[:, zone]
-  zo_layer_to_ri_layer_lut = to_array(inverse_fn(ri_layer_to_zo_layer_lut, range(num_emtf_zo_layers)))
+  num_emtf_img_rows = 8
+  host_to_img_row_lut = find_emtf_img_row_lut()[:, zone]
+  img_row_to_host_lut = to_array(inverse_fn(host_to_img_row_lut, np.arange(num_emtf_img_rows)))
 
   # ME1/2, RE1/2, RE2/2, ME2/2, ME3/2, RE3/2, ME4/2, RE4/2
-  zo_layer_to_ri_layer_lut_answer = [[1], [10], [13], [4], [6], [15], [8], [17]]
-  assert to_list(zo_layer_to_ri_layer_lut) == zo_layer_to_ri_layer_lut_answer
+  img_row_to_host_lut_answer = [[1], [10], [13], [4], [6], [15], [8], [17]]
+  assert to_list(img_row_to_host_lut) == img_row_to_host_lut_answer
 
-  ri_layer_to_zo_bounds_lut_0 = find_emtf_zones_lut()[:, zone, 0]
-  ri_layer_to_zo_bounds_lut_1 = find_emtf_zones_lut()[:, zone, 1]
-  zo_layer_to_chamber_lut = to_array([
-      [c for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
-      for ri_layers in zo_layer_to_ri_layer_lut
+  host_to_zone_bounds_lut_0 = find_emtf_zones_lut()[:, zone, 0]
+  host_to_zone_bounds_lut_1 = find_emtf_zones_lut()[:, zone, 1]
+  img_row_to_chamber_lut = to_array([
+      [c for host in hosts for c in host_to_chamber_lut[host]] \
+      for hosts in img_row_to_host_lut
   ])
-  zo_layer_to_zo_bounds_lut_0 = to_array([
-      [ri_layer_to_zo_bounds_lut_0[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
-      for ri_layers in zo_layer_to_ri_layer_lut
+  img_row_to_zone_bounds_lut_0 = to_array([
+      [host_to_zone_bounds_lut_0[host] for host in hosts for c in host_to_chamber_lut[host]] \
+      for hosts in img_row_to_host_lut
   ])
-  zo_layer_to_zo_bounds_lut_1 = to_array([
-      [ri_layer_to_zo_bounds_lut_1[ri_layer] for ri_layer in ri_layers for c in ri_layer_to_chamber_lut[ri_layer]] \
-      for ri_layers in zo_layer_to_ri_layer_lut
+  img_row_to_zone_bounds_lut_1 = to_array([
+      [host_to_zone_bounds_lut_1[host] for host in hosts for c in host_to_chamber_lut[host]] \
+      for hosts in img_row_to_host_lut
   ])
 
-  zo_layer_to_chamber_lut_answer = [
+  img_row_to_chamber_lut_answer = [
     [  3,   4,   5,  12,  13,  14,  46],
     [ 57,  58,  59,  66,  67,  68, 100],
     [ 75,  76,  77,  78,  79,  80, 103],
@@ -425,9 +445,9 @@ def test_chamber_to_ri_layer_lut():
     [ 39,  40,  41,  42,  43,  44,  53],
     [ 93,  94,  95,  96,  97,  98, 107],
   ]
-  assert to_list(zo_layer_to_chamber_lut) == zo_layer_to_chamber_lut_answer
+  assert to_list(img_row_to_chamber_lut) == img_row_to_chamber_lut_answer
 
-  zo_layer_to_zo_bounds_lut_0_answer = [
+  img_row_to_zone_bounds_lut_0_answer = [
     [52, 52, 52, 52, 52, 52, 52],
     [52, 52, 52, 52, 52, 52, 52],
     [56, 56, 56, 56, 56, 56, 56],
@@ -437,9 +457,9 @@ def test_chamber_to_ri_layer_lut():
     [51, 51, 51, 51, 51, 51, 51],
     [52, 52, 52, 52, 52, 52, 52],
   ]
-  assert to_list(zo_layer_to_zo_bounds_lut_0) == zo_layer_to_zo_bounds_lut_0_answer
+  assert to_list(img_row_to_zone_bounds_lut_0) == img_row_to_zone_bounds_lut_0_answer
 
-  zo_layer_to_zo_bounds_lut_1_answer = [
+  img_row_to_zone_bounds_lut_1_answer = [
     [88, 88, 88, 88, 88, 88, 88],
     [84, 84, 84, 84, 84, 84, 84],
     [88, 88, 88, 88, 88, 88, 88],
@@ -449,4 +469,4 @@ def test_chamber_to_ri_layer_lut():
     [88, 88, 88, 88, 88, 88, 88],
     [84, 84, 84, 84, 84, 84, 84],
   ]
-  assert to_list(zo_layer_to_zo_bounds_lut_1) == zo_layer_to_zo_bounds_lut_1_answer
+  assert to_list(img_row_to_zone_bounds_lut_1) == img_row_to_zone_bounds_lut_1_answer
