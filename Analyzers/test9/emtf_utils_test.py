@@ -209,3 +209,22 @@ def test_get_trigger_neighid():
 
 def test_get_trigger_endsec():
   assert [get_trigger_endsec(endcap, sector) for endcap in [1, -1] for sector in [1, 2, 3, 4, 5, 6]] == list(np.arange(12))
+
+def test_find_median_of_three():
+  assert find_median_of_three(10, 20, 30) == 20
+  assert find_median_of_three(30, 20, 10) == 20
+  assert find_median_of_three(20, 30, 10) == 20
+  assert find_median_of_three(10, 30, 20) == 20
+  assert find_median_of_three(30, 10, 20) == 20
+  assert find_median_of_three(20, 10, 30) == 20
+  assert find_median_of_three(20, 20, 20) == 20
+  assert find_median_of_three(999999, 20, 30) == 20
+  assert find_median_of_three(10, 999999, 30) == 10
+  assert find_median_of_three(10, 20, 999999) == 10
+  assert find_median_of_three(999999, 30, 20) == 20
+  assert find_median_of_three(30, 999999, 10) == 10
+  assert find_median_of_three(20, 10, 999999) == 10
+  assert find_median_of_three(999999, 999999, 30) == 30
+  assert find_median_of_three(10, 999999, 999999) == 10
+  assert find_median_of_three(999999, 20, 999999) == 20
+  assert find_median_of_three(999999, 999999, 999999) == 999999

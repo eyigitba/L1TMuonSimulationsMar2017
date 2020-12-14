@@ -242,6 +242,34 @@ def pick_the_median(lst):  # assume sorted list
   middle = 0 if len(lst) == 0 else (len(lst)-1)//2
   return lst[middle]
 
+def pick_the_first(lst):
+  return lst[0]
+
+def find_median_of_three(a0, a1, a2, ma_fill_value=999999):
+  vld0 = (a0 != ma_fill_value)
+  vld1 = (a1 != ma_fill_value)
+  vld2 = (a2 != ma_fill_value)
+  median = ma_fill_value
+  if vld1 and (not vld0 or a0 <= a1) and (vld2 and a1 <= a2):
+    median = a1
+  elif vld0 and (not vld2 or a2 <= a0) and (vld1 and a0 <= a1):
+    median = a0
+  elif vld2 and (not vld1 or a1 <= a2) and (vld0 and a2 <= a0):
+    median = a2
+  elif vld1 and (not vld2 or not a1 <= a2) and (vld0 and not a0 <= a1):
+    median = a1
+  elif vld0 and (not vld1 or not a0 <= a1) and (vld2 and not a2 <= a0):
+    median = a0
+  elif vld2 and (not vld0 or not a2 <= a0) and (vld1 and not a1 <= a2):
+    median = a2
+  elif vld1 and not vld0 and not vld2:
+    median = a1
+  elif vld0 and not vld2 and not vld1:
+    median = a0
+  elif vld2 and not vld1 and not vld0:
+    median = a2
+  return median
+
 def save_np_arrays(outfile, outdict):
   from numpy.compat import contextlib_nullcontext
   with contextlib_nullcontext(outfile) as f:

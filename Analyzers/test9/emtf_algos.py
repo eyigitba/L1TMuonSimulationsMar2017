@@ -25,11 +25,12 @@ num_emtf_segments = 2
 num_emtf_variables = 13
 
 num_emtf_sites = 12
+num_emtf_sites_rm = 5
 num_emtf_hosts = 19
 
 num_emtf_tracks = 4
 num_emtf_patterns = 7
-num_emtf_features = 36
+num_emtf_features = 36 + 4
 
 # Eta boundaries used to define the zones
 emtf_eta_bins = (0.8, 1.2, 1.55, 1.98, 2.4)
