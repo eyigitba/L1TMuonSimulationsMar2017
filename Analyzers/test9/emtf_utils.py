@@ -646,11 +646,15 @@ class SparseTensorValue(object):
     if not (isinstance(indices[:1], (np.ndarray, np.generic)) and
             indices.dtype in (np.int64, np.int32) and indices.ndim == 2):
       raise TypeError("indices must be a 2D int32 or int64 numpy array")
-    if not (isinstance(values[:1], (np.ndarray, np.generic)) and values.ndim == 1):
-      raise TypeError("values must be a 1D numpy array")
+    if not (isinstance(values[:1], (np.ndarray, np.generic)) and values.ndim >= 1):
+      raise TypeError("values must be a n-D numpy array")
     if not (isinstance(dense_shape[:1], (np.ndarray, np.generic)) and
             dense_shape.dtype in (np.int64, np.int32) and dense_shape.ndim == 1):
       raise TypeError("dense_shape must be a 1D int32 or int64 numpy array")
+    if not (indices.shape[0] == values.shape[0]):
+      raise TypeError("indices and values must have the same first dim")
+    if not (indices.shape[1] + (values.ndim - 1) == dense_shape.shape[0]):
+      raise TypeError("indices, values, and dense_shape must have consistent shapes")
     self._indices = indices
     self._values = values
     self._dense_shape = dense_shape
@@ -683,10 +687,20 @@ def dense_to_sparse(dense):
   return SparseTensorValue(indices=indices, values=values, dense_shape=dense_shape)
 
 def sparse_to_dense(sparse):
+  dense = np.zeros(sparse.dense_shape, dtype=sparse.dtype)
   ndims = sparse.indices.shape[1]
   tup = tuple(sparse.indices[:, i] for i in range(ndims))
-  dense = np.zeros(sparse.dense_shape, dtype=sparse.dtype)
   dense[tup] = sparse.values
+  return dense
+
+def sparse_to_dense_n(sparse, n):
+  dense_shape = (n,) + sparse.dense_shape[1:]
+  dense = np.zeros(dense_shape, dtype=sparse.dtype)
+  for i in range(len(sparse.indices)):
+    if sparse.indices[i, 0] >= n:
+      break
+    tup = tuple(sparse.indices[i])
+    dense[tup] = sparse.values[i]
   return dense
 
 # Based on
@@ -708,7 +722,7 @@ class IndexedSlicesValue(object):
             indices.dtype in (np.int64, np.int32) and indices.ndim == 1):
       raise TypeError("indices must be a 1D int32 or int64 numpy array")
     if not (isinstance(values[:1], (np.ndarray, np.generic)) and values.ndim >= 1):
-      raise TypeError("values must be a 1D numpy array")
+      raise TypeError("values must be a n-D numpy array")
     if not (isinstance(dense_shape[:1], (np.ndarray, np.generic)) and
             dense_shape.dtype in (np.int64, np.int32) and dense_shape.ndim == 1):
       raise TypeError("dense_shape must be a 1D int32 or int64 numpy array")
