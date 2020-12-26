@@ -1,5 +1,5 @@
 # The following source code is obtained from:
-# https://github.com/tensorflow/tensorflow/blob/v2.3.0/tensorflow/python/keras/layers/convolutional.py#L2045-L2208
+# https://github.com/tensorflow/tensorflow/blob/r2.4/tensorflow/python/keras/layers/convolutional.py#L2070-L2236
 # ==============================================================================
 
 # Copyright 2015 The TensorFlow Authors. All Rights Reserved.
@@ -16,9 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Keras convolution layers and image transformation layers.
-"""
-
+"""Keras convolution layers and image transformation layers."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -59,6 +57,9 @@ class SeparableConv2D(SeparableConv):
       Specifying any stride value != 1 is incompatible with specifying
       any `dilation_rate` value != 1.
     padding: one of `"valid"` or `"same"` (case-insensitive).
+      `"valid"` means no padding. `"same"` results in padding evenly to
+      the left/right or up/down of the input such that output has the same
+      height/width dimension as the input.
     data_format: A string,
       one of `channels_last` (default) or `channels_first`.
       The ordering of the dimensions in the inputs.
