@@ -270,6 +270,12 @@ def find_median_of_three(a0, a1, a2, ma_fill_value=999999):
     median = a2
   return median
 
+def nan_to_num(a, num=0.0, copy=True):
+  a = np.array(a, subok=True, copy=copy)
+  mask = np.isnan(a)
+  np.copyto(a, num, where=mask)
+  return a
+
 def save_np_arrays(outfile, outdict):
   from numpy.compat import contextlib_nullcontext
   with contextlib_nullcontext(outfile) as f:
@@ -365,90 +371,66 @@ def hist_digitize_inclusive(x, bins):
   bin_index = np.squeeze(bin_index)
   return bin_index
 
-# Copied from https://github.com/keras-team/keras/blob/master/keras/engine/training_utils.py
+# Copied from https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/keras/utils/generic_utils.py
 def make_batches(size, batch_size):
-    """Returns a list of batch indices (tuples of indices).
-    # Arguments
-        size: Integer, total size of the data to slice into batches.
-        batch_size: Integer, batch size.
-    # Returns
-        A list of tuples of array indices.
-    """
-    num_batches = (size + batch_size - 1) // batch_size  # round up
-    return [(i * batch_size, min(size, (i + 1) * batch_size))
-            for i in range(num_batches)]
+  """Returns a list of batch indices (tuples of indices).
 
-# Copied from https://github.com/keras-team/keras/blob/master/keras/utils/generic_utils.py
-def to_list(x, allow_tuple=False):
-    """Normalizes a list/tensor into a list.
-    If a tensor is passed, we return
-    a list of size 1 containing the tensor.
-    # Arguments
-        x: target object to be normalized.
-        allow_tuple: If False and x is a tuple,
-            it will be converted into a list
-            with a single element (the tuple).
-            Else converts the tuple to a list.
-    # Returns
-        A list.
-    """
-    if isinstance(x, list):
-      return x
-    if allow_tuple and isinstance(x, tuple):
-      return list(x)
-    return [x]
+  Args:
+      size: Integer, total size of the data to slice into batches.
+      batch_size: Integer, batch size.
 
-# Copied from https://github.com/keras-team/keras/blob/master/keras/utils/generic_utils.py
-def unpack_singleton(x):
-    """Gets the first element if the iterable has only one value.
-    Otherwise return the iterable.
-    # Argument
-        x: A list or tuple.
-    # Returns
-        The same iterable or the first element.
-    """
-    if len(x) == 1:
-      return x[0]
-    return x
+  Returns:
+      A list of tuples of array indices.
+  """
+  num_batches = int(np.ceil(size / float(batch_size)))
+  return [(i * batch_size, min(size, (i + 1) * batch_size))
+          for i in range(0, num_batches)]
 
-# Copied from https://github.com/keras-team/keras/blob/master/keras/utils/generic_utils.py
+# Copied from https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/keras/utils/generic_utils.py
 def slice_arrays(arrays, start=None, stop=None):
-    """Slices an array or list of arrays.
-    This takes an array-like, or a list of
-    array-likes, and outputs:
-        - arrays[start:stop] if `arrays` is an array-like
-        - [x[start:stop] for x in arrays] if `arrays` is a list
-    Can also work on list/array of indices: `_slice_arrays(x, indices)`
-    # Arguments
-        arrays: Single array or list of arrays.
-        start: can be an integer index (start index)
-            or a list/array of indices
-        stop: integer (stop index); should be None if
-            `start` was a list.
-    # Returns
-        A slice of the array(s).
-    """
-    if arrays is None:
-      return [None]
-    elif isinstance(arrays, list):
-      # integer array indexing
-      if hasattr(start, '__len__'):
-        # hdf5 datasets only support list objects as indices
-        if hasattr(start, 'shape'):
-          start = start.tolist()
-        return [None if x is None else x[start] for x in arrays]
-      # slicing
-      else:
-        return [None if x is None else x[start:stop] for x in arrays]
-    else:
-      if hasattr(start, '__len__'):
-        if hasattr(start, 'shape'):
-          start = start.tolist()
-        return arrays[start]
-      elif hasattr(start, '__getitem__'):
-        return arrays[start:stop]
-      else:
-        return [None]
+  """Slice an array or list of arrays.
+
+  This takes an array-like, or a list of
+  array-likes, and outputs:
+      - arrays[start:stop] if `arrays` is an array-like
+      - [x[start:stop] for x in arrays] if `arrays` is a list
+
+  Can also work on list/array of indices: `slice_arrays(x, indices)`
+
+  Args:
+      arrays: Single array or list of arrays.
+      start: can be an integer index (start index) or a list/array of indices
+      stop: integer (stop index); should be None if `start` was a list.
+
+  Returns:
+      A slice of the array(s).
+
+  Raises:
+      ValueError: If the value of start is a list and stop is not None.
+  """
+  if arrays is None:
+    return [None]
+  if isinstance(start, list) and stop is not None:
+    raise ValueError('The stop argument has to be None if the value of start '
+                     'is a list.')
+  elif isinstance(arrays, list):
+    if hasattr(start, '__len__'):
+      # hdf5 datasets only support list objects as indices
+      if hasattr(start, 'shape'):
+        start = start.tolist()
+      return [None if x is None else x[start] for x in arrays]
+    return [
+        None if x is None else
+        None if not hasattr(x, '__getitem__') else x[start:stop] for x in arrays
+    ]
+  else:
+    if hasattr(start, '__len__'):
+      if hasattr(start, 'shape'):
+        start = start.tolist()
+      return arrays[start]
+    if hasattr(start, '__getitem__'):
+      return arrays[start:stop]
+    return [None]
 
 # Based on
 #   https://www.tensorflow.org/guide/ragged_tensor
