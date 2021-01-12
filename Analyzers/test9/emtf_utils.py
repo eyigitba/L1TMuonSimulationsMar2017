@@ -490,7 +490,26 @@ class RaggedTensorValue(object):
 
   def __getitem__(self, row_key):
     if isinstance(row_key, slice):
-      raise ValueError("slicing is not supported")
+      # Use row_key to slice the starts & limits.
+      new_starts = self.row_splits[:-1][row_key]
+      new_limits = self.row_splits[1:][row_key]
+      zero_pad = np.arange(1, dtype=self.row_splits.dtype)
+
+      # If there's no slice step, then we can just select a single continuous
+      # span of `ragged.values(rt_input)`.
+      if row_key.step is None or row_key.step == 1:
+        # Construct the new splits.  If new_starts and new_limits are empty,
+        # then this reduces to [0].  Otherwise, this reduces to:
+        #   concat([[new_starts[0]], new_limits])
+        new_splits = np.concatenate(
+            [zero_pad[new_starts.size:], new_starts[:1], new_limits],
+            axis=0)
+        values_start = new_splits[0]
+        values_limit = new_splits[-1]
+        return RaggedTensorValue(self.values[values_start:values_limit], new_splits - values_start)
+      else:
+        raise ValueError("slicing with slice step is not supported")
+
     starts = self.row_splits[:-1]
     limits = self.row_splits[1:]
     row = self.values[starts[row_key]:limits[row_key]]
@@ -575,14 +594,13 @@ def ragged_boolean_mask(ragged, mask):
   data = ragged.values
   new_values = data[mask]
 
-  new_row_lengths = np.zeros((ragged.nrows,), dtype=np.int32)
+  new_row_lengths = np.zeros((ragged.nrows,), dtype=ragged.row_splits.dtype)
   for i in range(ragged.nrows):
     new_row_lengths[i] = np.count_nonzero(mask[ragged.row_splits[i]:ragged.row_splits[i + 1]])
-  new_row_splits = [0]
-  new_row_splits.extend(np.cumsum(new_row_lengths))
+  new_row_splits = np.append(0, np.cumsum(new_row_lengths))
 
   new_values = np.asarray(new_values)
-  new_row_splits = np.asarray(new_row_splits, dtype=np.int32)
+  new_row_splits = np.asarray(new_row_splits, dtype=ragged.row_splits.dtype)
   new_values = RaggedTensorValue(new_values, new_row_splits)
   return new_values
 
@@ -602,13 +620,56 @@ def ragged_row_boolean_mask(ragged, row_mask):
   new_values = data[mask]
 
   new_row_lengths = ragged.row_lengths[row_mask]
-  new_row_splits = [0]
-  new_row_splits.extend(np.cumsum(new_row_lengths))
+  new_row_splits = np.append(0, np.cumsum(new_row_lengths))
 
   new_values = np.asarray(new_values)
-  new_row_splits = np.asarray(new_row_splits, dtype=np.int32)
+  new_row_splits = np.asarray(new_row_splits, dtype=ragged.row_splits.dtype)
   new_values = RaggedTensorValue(new_values, new_row_splits)
   return new_values
+
+def ragged_row_splits_to_segment_ids(row_splits):
+  if not (isinstance(row_splits[:1], (np.ndarray, np.generic)) and
+          row_splits.dtype in (np.int64, np.int32) and row_splits.ndim == 1):
+    raise TypeError("row_splits must be a 1D int32 or int64 numpy array")
+
+  row_lengths = row_splits[1:] - row_splits[:-1]
+  nrows = row_splits.shape[0] - 1
+  indices = np.arange(nrows, dtype=row_splits.dtype)
+  segment_ids = np.repeat(indices, repeats=row_lengths)
+  return segment_ids
+
+def ragged_segment_ids_to_row_splits(segment_ids, num_segments=None):
+  if not (isinstance(segment_ids[:1], (np.ndarray, np.generic)) and
+          segment_ids.dtype in (np.int64, np.int32) and segment_ids.ndim == 1):
+    raise TypeError("segment_ids must be a 1D int32 or int64 numpy array")
+  if num_segments is not None:
+    if not (isinstance(num_segments, (np.ndarray, np.generic)) and
+            num_segments.dtype in (np.int64, np.int32) and num_segments.ndim == 0):
+      raise TypeError("num_segment must be a 0D int32 or int64 numpy array")
+
+  row_lengths = np.bincount(segment_ids, minlength=num_segments)
+  row_splits = np.append(0, np.cumsum(row_lengths))
+  row_splits = np.asarray(row_splits, dtype=segment_ids.dtype)
+  return row_splits
+
+def ragged_range(starts, limits=None, deltas=1, dtype=np.int32):
+  if limits is None:
+    starts = np.asarray(starts)
+    starts, limits = (starts * 0), starts
+  else:
+    starts, limits = np.asarray(starts), np.asarray(limits)
+
+  deltas = np.asarray(deltas)
+  if deltas.ndim == 0:
+    nested_range = [np.arange(start, limit, deltas, dtype=dtype) for (start, limit) in zip(starts, limits)]
+  else:
+    nested_range = [np.arange(start, limit, delta, dtype=dtype) for (start, limit, delta) in zip(starts, limits, deltas)]
+
+  values = np.concatenate(nested_range, axis=0)
+  row_lengths = np.array([len(x) for x in nested_range])
+  row_splits = np.append(0, np.cumsum(row_lengths))
+  row_splits = np.asarray(row_splits, dtype=np.int32)
+  return RaggedTensorValue(values, row_splits)
 
 # Based on
 #   https://www.tensorflow.org/api_docs/python/tf/sparse/SparseTensor

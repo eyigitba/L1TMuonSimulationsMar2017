@@ -602,17 +602,7 @@ def find_emtf_bend(hit):
 
 def find_emtf_qual(hit):
   emtf_qual = np.int32(hit.quality)
-  if hit.type == kCSC or hit.type == kME0:
-    # front chamber -> +1
-    # rear chamber  -> -1
-    if int(hit.fr) == 1:
-      emtf_qual *= +1
-    else:
-      emtf_qual *= -1
-  elif hit.type == kRPC or hit.type == kGEM:
-    emtf_qual = np.int32(0)
-  else:  # kDT
-    pass
+  emtf_qual = np.clip(emtf_qual, 0, 15)
   return emtf_qual
 
 def find_emtf_time(hit):
