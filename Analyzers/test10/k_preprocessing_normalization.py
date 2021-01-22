@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Keras preprocessing layers."""
+"""Normalization preprocessing layer."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -61,7 +61,7 @@ class Normalization(base_preprocessing_layer.CombinerPreprocessingLayer):
     as the layer's weights. `adapt` should be called before `fit`, `evaluate`,
     or `predict`.
 
-  Attributes:
+  Args:
       axis: Integer or tuple of integers, the axis or axes that should be
         "kept". These axes are not be summed over when calculating the
         normalization statistics. By default the last axis, the `features` axis
@@ -104,11 +104,7 @@ class Normalization(base_preprocessing_layer.CombinerPreprocessingLayer):
          [ 0.        ]], dtype=float32)>
   """
 
-  def __init__(self, axis=-1, dtype=None, mean=None, variance=None, **kwargs):
-    # This ensures that if the value of K.floatx() changes after file-loading
-    # time, the dtype value will change to reflect it.
-    dtype = dtype or K.floatx()
-
+  def __init__(self, axis=-1, mean=None, variance=None, mask_value=0., **kwargs):
     # Standardize `axis` to a tuple.
     if axis is None:
       axis = ()
@@ -118,8 +114,8 @@ class Normalization(base_preprocessing_layer.CombinerPreprocessingLayer):
       axis = tuple(axis)
 
     super(Normalization, self).__init__(
-        combiner=_NormalizingCombiner(axis), dtype=dtype, **kwargs)
-    #base_preprocessing_layer._kpl_gauge.get_cell('V2').set('Normalization')
+        combiner=_NormalizingCombiner(axis, mask_value), **kwargs)
+    #base_preprocessing_layer.keras_kpl_gauge.get_cell('Normalization').set(True)
 
     if 0 in axis:
       raise ValueError('The argument \'axis\' may not be 0.')
@@ -143,6 +139,7 @@ class Normalization(base_preprocessing_layer.CombinerPreprocessingLayer):
 
     self.mean_val = mean
     self.variance_val = variance
+    self.mask_value = mask_value
 
   def build(self, input_shape):
     input_shape = tensor_shape.TensorShape(input_shape).as_list()
@@ -208,8 +205,10 @@ class Normalization(base_preprocessing_layer.CombinerPreprocessingLayer):
     # broadcasts the data correctly.
     mean = array_ops.reshape(self.mean, self._broadcast_shape)
     variance = array_ops.reshape(self.variance, self._broadcast_shape)
-    return ((inputs - mean) /
-            math_ops.maximum(math_ops.sqrt(variance), K.epsilon()))
+    boolean_mask = math_ops.not_equal(inputs, self.mask_value)
+    outputs = ((inputs - mean) /
+               math_ops.maximum(math_ops.sqrt(variance), K.epsilon()))
+    return array_ops.where_v2(boolean_mask, outputs, inputs)
 
   def compute_output_shape(self, input_shape):
     return input_shape
@@ -218,7 +217,7 @@ class Normalization(base_preprocessing_layer.CombinerPreprocessingLayer):
     return input_spec
 
   def get_config(self):
-    config = {'axis': self.axis}
+    config = {'axis': self.axis, 'mask_value': self.mask_value}
     base_config = super(Normalization, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
@@ -243,12 +242,13 @@ class _NormalizingCombiner(base_preprocessing_layer.Combiner):
   MEAN_IDX = 1
   VAR_IDX = 2
 
-  def __init__(self, axis):
+  def __init__(self, axis, mask_value=0.):
     self.axis = axis
+    self.mask_value = mask_value
 
   def compute(self, values, accumulator=None):
     """Compute a step in this computation, returning a new accumulator."""
-    values = np.array(values)
+    values = np.array(values, dtype=np.float64)
     if values.ndim == 1:
       values = np.expand_dims(values, 1)
 
@@ -268,9 +268,30 @@ class _NormalizingCombiner(base_preprocessing_layer.Combiner):
     # over here.
     reduction_axes = tuple(np.arange(values.ndim)[axis_mask])
 
-    count = np.sum(~np.isnan(values), axis=reduction_axes)
-    mean = np.nanmean(values, axis=reduction_axes, dtype=np.float64)
-    variance = np.nanvar(values, axis=reduction_axes, dtype=np.float64)
+    #mean = np.mean(values, axis=reduction_axes, dtype=np.float64)
+    #variance = np.var(values, axis=reduction_axes, dtype=np.float64)
+
+    def _copyto(a, val, mask):
+      np.copyto(a, val, where=mask, casting='unsafe')
+      return a
+
+    def _divide_by_count(a, b, out=None):
+      if out is None:
+        return np.divide(a, b, out=a, casting='unsafe')
+      else:
+        return np.divide(a, b, out=out, casting='unsafe')
+
+    mask = np.equal(values, self.mask_value)
+    values = _copyto(values, 0, mask)
+    count = np.sum(~mask, axis=reduction_axes)
+    mean = np.sum(values, axis=reduction_axes, dtype=np.float64)
+    mean = _divide_by_count(mean, count)
+
+    np.subtract(values, mean, out=values, casting='unsafe')
+    values = _copyto(values, 0, mask)
+    np.multiply(values, values, out=values, casting='unsafe')
+    variance = np.sum(values, axis=reduction_axes, dtype=np.float64)
+    variance = _divide_by_count(variance, count)
 
     # Create an accumulator with our new data and either return it or combine
     # it with the passed accumulator.
