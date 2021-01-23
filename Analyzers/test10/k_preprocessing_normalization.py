@@ -104,7 +104,7 @@ class Normalization(base_preprocessing_layer.CombinerPreprocessingLayer):
          [ 0.        ]], dtype=float32)>
   """
 
-  def __init__(self, axis=-1, mean=None, variance=None, mask_value=0., **kwargs):
+  def __init__(self, axis=-1, mean=None, variance=None, use_bias=True, mask_value=0., **kwargs):
     # Standardize `axis` to a tuple.
     if axis is None:
       axis = ()
@@ -139,6 +139,7 @@ class Normalization(base_preprocessing_layer.CombinerPreprocessingLayer):
 
     self.mean_val = mean
     self.variance_val = variance
+    self.use_bias = use_bias
     self.mask_value = mask_value
 
   def build(self, input_shape):
@@ -203,7 +204,10 @@ class Normalization(base_preprocessing_layer.CombinerPreprocessingLayer):
       inputs = math_ops.cast(inputs, K.floatx())
     # We need to reshape the mean and variance data to ensure that Tensorflow
     # broadcasts the data correctly.
-    mean = array_ops.reshape(self.mean, self._broadcast_shape)
+    if self.use_bias:
+      mean = array_ops.reshape(self.mean, self._broadcast_shape)
+    else:
+      mean = array_ops.reshape(array_ops.zeros(self.mean.shape, self.mean.dtype), self._broadcast_shape)
     variance = array_ops.reshape(self.variance, self._broadcast_shape)
     boolean_mask = math_ops.not_equal(inputs, self.mask_value)
     outputs = ((inputs - mean) /
