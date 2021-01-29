@@ -16,15 +16,15 @@ ytick.color: .15
 #axes.axisbelow: True
 #image.cmap: Greys
 font.family: sans-serif
-#font.sans-serif: Arial, Liberation Sans, Bitstream Vera Sans, sans-serif
+#font.sans-serif: Arial, Liberation Sans, DejaVu Sans, Bitstream Vera Sans, sans-serif
 #grid.linestyle: -
 lines.solid_capstyle: round
 
-# Seaborn white parameters
-#axes.grid: False
+# Seaborn whitegrid parameters
+axes.grid: True
 axes.facecolor: white
-axes.edgecolor: .15
-axes.linewidth: 1.25
+#axes.edgecolor: .8
+#axes.linewidth: 1
 #grid.color: .8
 #xtick.major.size: 0
 #ytick.major.size: 0
@@ -39,7 +39,7 @@ axes.linewidth: 1.25
 #ytick.labelsize: 8
 #legend.fontsize: 8
 
-#grid.linewidth: 0.8
+grid.linewidth: 0.8
 lines.linewidth: 1.4
 patch.linewidth: 0.24
 lines.markersize: 5.6
@@ -69,17 +69,18 @@ image.cmap : viridis
 
 ### FONT
 font.size : 11
-font.sans-serif : Helvetica, Arial, Liberation Sans, Bitstream Vera Sans, sans-serif
+font.sans-serif : Helvetica, Arial, Liberation Sans, DejaVu Sans, Bitstream Vera Sans, sans-serif
 
 ### AXES
-axes.grid: True
-axes.titlesize : medium
 axes.labelsize : medium
+axes.titlesize : medium
 axes.labelweight : 500
-
-#axes.autolimit_mode: round_numbers
-#axes.xmargin: 0
-#axes.ymargin: 0
+axes.axisbelow : False
+axes.edgecolor: .15
+axes.linewidth: 1.25
+#axes.autolimit_mode : round_numbers
+#axes.xmargin : 0
+#axes.ymargin : 0
 
 ### LINES
 #lines.linewidth : 2
@@ -105,10 +106,9 @@ ytick.right : True
 legend.fontsize : medium
 
 ### GRID
-grid.color : black
+grid.color : .15
 grid.linestyle : :
-grid.linewidth : 0.5
-grid.alpha : 0.5
+grid.alpha : 0.6
 
 ### ERRORBAR PLOTS
 errorbar.capsize : 0
