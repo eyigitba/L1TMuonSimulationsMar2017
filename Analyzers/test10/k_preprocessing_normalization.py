@@ -221,7 +221,7 @@ class Normalization(base_preprocessing_layer.CombinerPreprocessingLayer):
     return input_spec
 
   def get_config(self):
-    config = {'axis': self.axis, 'mask_value': self.mask_value}
+    config = {'axis': self.axis, 'use_bias': self.use_bias, 'mask_value': self.mask_value}
     base_config = super(Normalization, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 

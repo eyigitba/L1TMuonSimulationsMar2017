@@ -118,13 +118,13 @@ class ExponentialDecay(learning_rate_schedule.LearningRateSchedule):
       decay_rate = math_ops.cast(self.decay_rate, dtype)
 
       global_step_recomp = math_ops.cast(step, dtype)
-      p = global_step_recomp / warmup_steps
+      p = math_ops.div_no_nan(global_step_recomp, warmup_steps)
       p = math_ops.maximum(p, K.epsilon())
       warmup_learning_rate = math_ops.multiply(
           initial_learning_rate, math_ops.pow(p, 1.0))
 
       global_step_recomp = math_ops.cast(step - self.warmup_steps, dtype)
-      p = global_step_recomp / decay_steps
+      p = math_ops.div_no_nan(global_step_recomp, decay_steps)
       if self.staircase:
         p = math_ops.floor(p)
       learning_rate = math_ops.multiply(
