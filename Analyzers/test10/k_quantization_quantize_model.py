@@ -23,7 +23,7 @@ import tensorflow as tf
 from tensorflow_model_optimization.python.core.quantization.keras import quantize_annotate as quantize_annotate_mod
 from tensorflow_model_optimization.python.core.quantization.keras import quantize as quantize_mod
 
-keras = tf.keras
+from k_quantization_quantize_scheme import DefaultQuantizeScheme
 
 
 def _add_quant_wrapper(layer):
@@ -37,7 +37,7 @@ def _add_quant_wrapper(layer):
   return quantize_annotate_mod.QuantizeAnnotate(layer)
 
 
-def quantize_model(to_quantize, quantize_annotate_fn=_add_quant_wrapper):
+def quantize_model(to_quantize, annotate_fn=_add_quant_wrapper):
   """Quantize a `tf.keras` model with the default quantization implementation.
 
   Quantization constructs a model which emulates quantization during training.
@@ -52,7 +52,7 @@ def quantize_model(to_quantize, quantize_annotate_fn=_add_quant_wrapper):
   ```python
   # Quantize sequential model
   model = quantize_model(
-      keras.Sequential([
+      tf.keras.Sequential([
           layers.Dense(10, activation='relu', input_shape=(100,)),
           layers.Dense(2, activation='sigmoid')
       ]))
@@ -81,24 +81,24 @@ def quantize_model(to_quantize, quantize_annotate_fn=_add_quant_wrapper):
   if to_quantize is None:
     raise ValueError('`to_quantize` cannot be None')
 
-  if not isinstance(to_quantize, keras.Model):
+  if not isinstance(to_quantize, tf.keras.Model):
     raise ValueError(
         '`to_quantize` can only be a `tf.keras.Model` instance. Use '
         'the `quantize_annotate_layer` API to handle individual layers.'
         'You passed an instance of type: {input}.'.format(
             input=to_quantize.__class__.__name__))
 
-  if not isinstance(to_quantize, keras.Sequential) \
+  if not isinstance(to_quantize, tf.keras.Sequential) \
       and not to_quantize._is_graph_network:  # pylint: disable=protected-access
     raise ValueError(
         '`to_quantize` can only either be a tf.keras Sequential or '
         'Functional model.')
 
-  annotated_model = quantize_annotate_model(to_quantize, quantize_annotate_fn)
-  return quantize_mod.quantize_apply(annotated_model)
+  annotated_model = quantize_annotate_model(to_quantize, annotate_fn)
+  return quantize_mod.quantize_apply(annotated_model, DefaultQuantizeScheme())
 
 
-def quantize_annotate_model(to_annotate, quantize_annotate_fn=_add_quant_wrapper):
+def quantize_annotate_model(to_annotate, annotate_fn=_add_quant_wrapper):
   """Annotate a `tf.keras` model to be quantized.
 
   This function does not actually quantize the model. It merely specifies
@@ -115,7 +115,7 @@ def quantize_annotate_model(to_annotate, quantize_annotate_fn=_add_quant_wrapper
   quantize_config = MyDenseQuantizeConfig()
 
   model = quantize_annotate_model(
-    keras.Sequential([
+    tf.keras.Sequential([
       layers.Dense(10, activation='relu', input_shape=(100,)),
       quantize_annotate_layer(
           layers.Dense(2, activation='sigmoid'),
@@ -140,18 +140,18 @@ def quantize_annotate_model(to_annotate, quantize_annotate_fn=_add_quant_wrapper
   if to_annotate is None:
     raise ValueError('`to_annotate` cannot be None')
 
-  if not isinstance(to_annotate, keras.Model):
+  if not isinstance(to_annotate, tf.keras.Model):
     raise ValueError(
         '`to_annotate` can only be a `tf.keras.Model` instance. Use '
         'the `quantize_annotate_layer` API to handle individual layers. '
         'You passed an instance of type: {input}.'.format(
             input=to_annotate.__class__.__name__))
 
-  if not isinstance(to_annotate, keras.Sequential) \
+  if not isinstance(to_annotate, tf.keras.Sequential) \
       and not to_annotate._is_graph_network:  # pylint: disable=protected-access
     raise ValueError(
         '`to_annotate` can only either be a tf.keras Sequential or '
         'Functional model.')
 
-  return keras.models.clone_model(
-      to_annotate, input_tensors=None, clone_function=quantize_annotate_fn)
+  return tf.keras.models.clone_model(
+      to_annotate, input_tensors=None, clone_function=annotate_fn)
