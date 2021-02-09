@@ -17,11 +17,15 @@
 # limitations under the License.
 # ==============================================================================
 """Quantization API functions for tf.keras models."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow_model_optimization.python.core.quantization.keras import quantize_annotate as quantize_annotate_mod
-from tensorflow_model_optimization.python.core.quantization.keras import quantize as quantize_mod
+from tensorflow_model_optimization.python.core.quantization.keras import quantize_annotate as quantize_annotate_module
+from tensorflow_model_optimization.python.core.quantization.keras import quantize as quantize_module
+from tensorflow_model_optimization.python.core.quantization.keras import quantizers
 
 from k_quantization_quantize_scheme import DefaultQuantizeScheme
 
@@ -29,12 +33,48 @@ from k_quantization_quantize_scheme import DefaultQuantizeScheme
 def _add_quant_wrapper(layer):
   """Add annotation wrapper."""
   # Already annotated layer. No need to wrap.
-  if isinstance(layer, quantize_annotate_mod.QuantizeAnnotate):
+  if isinstance(layer, quantize_annotate_module.QuantizeAnnotate):
     return layer
   if isinstance(layer, tf.keras.Model):
     raise ValueError(
         'Quantizing a tf.keras Model inside another tf.keras Model is not supported.')
-  return quantize_annotate_mod.QuantizeAnnotate(layer)
+  return quantize_annotate_module.QuantizeAnnotate(layer)
+
+
+def quantize_scope(*args):
+  """Scope which can be used to deserialize quantized Keras models and layers.
+
+  Under `quantize_scope`, Keras methods such as `tf.keras.load_model` and
+  `tf.keras.models.model_from_config` will be able to deserialize Keras models
+  and layers which contain quantization classes such as `QuantizeConfig`
+  and `Quantizer`.
+
+  Example:
+
+  ```python
+  tf.keras.models.save_model(quantized_model, keras_file)
+
+  with quantize_scope():
+    loaded_model = tf.keras.models.load_model(keras_file)
+
+  # If your quantized model uses custom objects such as a specific `Quantizer`,
+  # you can pass them to quantize_scope to deserialize your model.
+  with quantize_scope({'FixedRangeQuantizer', FixedRangeQuantizer}
+    loaded_model = tf.keras.models.load_model(keras_file)
+  ```
+
+  For further understanding, see `tf.keras.utils.custom_object_scope`.
+
+  Args:
+    *args: Variable length list of dictionaries of `{name, class}` pairs to add
+      to the scope created by this method.
+
+  Returns:
+    Object of type `CustomObjectScope` with quantization objects included.
+  """
+  quantization_objects = {}
+  quantization_objects.update(quantizers._types_dict())  # pylint: disable=protected-access
+  return tf.keras.utils.custom_object_scope(*(args + (quantization_objects,)))
 
 
 def quantize_model(to_quantize, annotate_fn=_add_quant_wrapper):
@@ -95,7 +135,7 @@ def quantize_model(to_quantize, annotate_fn=_add_quant_wrapper):
         'Functional model.')
 
   annotated_model = quantize_annotate_model(to_quantize, annotate_fn)
-  return quantize_mod.quantize_apply(annotated_model, DefaultQuantizeScheme())
+  return quantize_module.quantize_apply(annotated_model, DefaultQuantizeScheme())
 
 
 def quantize_annotate_model(to_annotate, annotate_fn=_add_quant_wrapper):

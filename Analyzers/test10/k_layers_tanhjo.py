@@ -26,6 +26,8 @@ from tensorflow.python.ops import math_ops
 from tensorflow.python.keras.engine.base_layer import Layer
 
 class Tanhjo(Layer):
+  """An implementation of scaled tanh."""
+
   def __init__(self, alpha=1., beta=1., **kwargs):
     super(Tanhjo, self).__init__(**kwargs)
     self.supports_masking = True

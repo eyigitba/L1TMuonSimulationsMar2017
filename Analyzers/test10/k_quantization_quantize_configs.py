@@ -17,7 +17,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Interface for a layer to express how to quantize it."""
+"""Default QuantizeConfigs."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 from tensorflow_model_optimization.python.core.quantization.keras import quantize_config
 from tensorflow_model_optimization.python.core.quantization.keras import quantizers
@@ -27,14 +30,14 @@ class DefaultDenseQuantizeConfig(quantize_config.QuantizeConfig):
   """QuantizeConfig which quantizes the weights and activations of a layer."""
 
   def get_weights_and_quantizers(self, layer):
-    weight_quantizer = quantizers.LastValueQuantizer(
+    quantizer = quantizers.LastValueQuantizer(
         num_bits=8, per_axis=False, symmetric=True, narrow_range=True)
-    return [(layer.kernel, weight_quantizer)]
+    return [(layer.kernel, quantizer)]
 
   def get_activations_and_quantizers(self, layer):
-    activation_quantizer = quantizers.MovingAverageQuantizer(
+    quantizer = quantizers.MovingAverageQuantizer(
         num_bits=8, per_axis=False, symmetric=False, narrow_range=False)
-    return [(layer.activation, activation_quantizer)]
+    return [(layer.activation, quantizer)]
 
   def set_quantize_weights(self, layer, quantize_weights):
     layer.kernel = quantize_weights[0]
@@ -44,6 +47,30 @@ class DefaultDenseQuantizeConfig(quantize_config.QuantizeConfig):
 
   def get_output_quantizers(self, layer):
     return []
+
+  def get_config(self):
+    return {}
+
+
+class DefaultInputQuantizeConfig(quantize_config.QuantizeConfig):
+  """QuantizeConfig which only quantizes the output from a layer."""
+
+  def get_weights_and_quantizers(self, layer):
+    return []
+
+  def get_activations_and_quantizers(self, layer):
+    return []
+
+  def set_quantize_weights(self, layer, quantize_weights):
+    pass
+
+  def set_quantize_activations(self, layer, quantize_activations):
+    pass
+
+  def get_output_quantizers(self, layer):
+    quantizer = quantizers.AllValuesQuantizer(
+        num_bits=8, per_axis=False, symmetric=False, narrow_range=False)
+    return [quantizer]
 
   def get_config(self):
     return {}
@@ -65,9 +92,9 @@ class DefaultOutputQuantizeConfig(quantize_config.QuantizeConfig):
     pass
 
   def get_output_quantizers(self, layer):
-    output_quantizer = quantizers.MovingAverageQuantizer(
+    quantizer = quantizers.MovingAverageQuantizer(
         num_bits=8, per_axis=False, symmetric=False, narrow_range=False)
-    return [output_quantizer]
+    return [quantizer]
 
   def get_config(self):
     return {}
@@ -93,3 +120,31 @@ class NoOpQuantizeConfig(quantize_config.QuantizeConfig):
 
   def get_config(self):
     return {}
+
+
+class SuperDenseQuantizeConfig(DefaultDenseQuantizeConfig):
+  """QuantizeConfig which keeps the quantizers for the weights and activations of a layer."""
+
+  def get_weights_and_quantizers(self, layer):
+    weight = layer.kernel
+    weight_name = layer.kernel.name.split(':')[0].split('/')[-1]
+    quantizer = quantizers.LastValueQuantizer(
+        num_bits=8, per_axis=False, symmetric=True, narrow_range=True)
+    quantizer_vars = quantizer.build(weight.shape, weight_name, layer)
+    layer._quantize_weight_vars = [(weight, quantizer, quantizer_vars)]
+    return []
+
+  def get_activations_and_quantizers(self, layer):
+    activation = layer.activation
+    activation_name = 'post_activation'
+    quantizer = quantizers.MovingAverageQuantizer(
+        num_bits=8, per_axis=False, symmetric=False, narrow_range=False)
+    quantizer_vars = quantizer.build(None, activation_name, layer)
+    layer._quantize_activation_vars = [(activation, quantizer, quantizer_vars)]
+    return []
+
+  def set_quantize_weights(self, layer, quantize_weights):
+    pass
+
+  def set_quantize_activations(self, layer, quantize_activations):
+    pass
