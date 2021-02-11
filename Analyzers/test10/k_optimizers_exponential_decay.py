@@ -1,5 +1,6 @@
 # The following source code is obtained from:
 # https://github.com/tensorflow/tensorflow/blob/r2.4/tensorflow/python/keras/optimizer_v2/learning_rate_schedule.py#L65-L166
+# https://github.com/tensorflow/tensorflow/blob/r2.4/tensorflow/python/keras/callbacks.py#L1858-L1920
 # ==============================================================================
 
 # Copyright 2015 The TensorFlow Authors. All Rights Reserved.
@@ -26,6 +27,7 @@ from tensorflow.python.keras import backend as K
 from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.keras.optimizer_v2 import learning_rate_schedule
+from tensorflow.python.keras.callbacks import Callback
 
 class ExponentialDecay(learning_rate_schedule.LearningRateSchedule):
   """A LearningRateSchedule that uses an exponential decay schedule.
@@ -129,6 +131,7 @@ class ExponentialDecay(learning_rate_schedule.LearningRateSchedule):
         p = math_ops.floor(p)
       learning_rate = math_ops.multiply(
           initial_learning_rate, math_ops.pow(decay_rate, p))
+      learning_rate = math_ops.maximum(learning_rate, 2e-5)  # bounded below at 2e-5
       return control_flow_ops.cond(
           step < self.warmup_steps,
           lambda: warmup_learning_rate,
@@ -144,3 +147,17 @@ class ExponentialDecay(learning_rate_schedule.LearningRateSchedule):
         "staircase": self.staircase,
         "name": self.name
     }
+
+class LearningRateLogger(Callback):
+  def __init__(self):
+    super(LearningRateLogger, self).__init__()
+
+  def on_epoch_end(self, epoch, logs=None):
+    logs = logs or {}
+    lr_schedule = getattr(self.model.optimizer, 'lr', None)
+    if isinstance(lr_schedule, ExponentialDecay):
+      lr = lr_schedule(self.model.optimizer.iterations)
+      lr = K.get_value(lr)
+    else:
+      lr = K.get_value(self.model.optimizer.lr)
+    logs['lr'] = lr
