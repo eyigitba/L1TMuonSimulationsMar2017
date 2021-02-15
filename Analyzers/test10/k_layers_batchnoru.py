@@ -53,7 +53,7 @@ class BatchNoru(BatchNormalization):
           lambda: ops.convert_to_tensor_v2_with_dispatch(self.moving_mean))
       variance = control_flow_util.smart_cond(
           training, lambda: variance,
-          lambda: ops.convert_to_tensor_v2_with_dispatch(moving_variance))
+          lambda: ops.convert_to_tensor_v2_with_dispatch(self.moving_variance))
 
       def _do_update(var, value):
         input_batch_size = None
