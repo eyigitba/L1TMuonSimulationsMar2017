@@ -39,3 +39,5 @@ if __name__ == "__main__":
       sess, sess.graph.as_graph_def(), outputs)
   tf.train.write_graph(constant_graph, './', constant_graph_file, as_text=False)
   print('constant graph: {}'.format(constant_graph_file))
+  #tf.train.write_graph(constant_graph, './', constant_graph_file + '.txt', as_text=True)
+  #print('(as text): {}'.format(constant_graph_file + '.txt'))
