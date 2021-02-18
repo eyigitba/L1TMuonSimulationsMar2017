@@ -25,7 +25,6 @@ import tensorflow as tf
 
 from tensorflow_model_optimization.python.core.quantization.keras import quantize_annotate as quantize_annotate_module
 from tensorflow_model_optimization.python.core.quantization.keras import quantize as quantize_module
-from tensorflow_model_optimization.python.core.quantization.keras import quantizers
 
 from k_quantization_quantize_scheme import DefaultQuantizeScheme
 
@@ -72,8 +71,7 @@ def quantize_scope(*args):
   Returns:
     Object of type `CustomObjectScope` with quantization objects included.
   """
-  quantization_objects = {}
-  quantization_objects.update(quantizers._types_dict())  # pylint: disable=protected-access
+  quantization_objects = DefaultQuantizeScheme._QUANTIZATION_OBJECTS.copy()
   return tf.keras.utils.custom_object_scope(*(args + (quantization_objects,)))
 
 

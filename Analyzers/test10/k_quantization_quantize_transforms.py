@@ -87,7 +87,7 @@ class DenzuFolding(transforms.Transform):
     dense_config = dense_layer['config']
     batchnorm_config = batchnorm_layer['config']
     batchnorm_config.pop('name')
-    batchnorm_config['trainable'] = False  # set 'layer.trainable = False' to freeze the BN layer
+    #batchnorm_config['trainable'] = False  # set 'layer.trainable = False' to freeze the BN layer
     layer_config = dict(list(dense_config.items()) + list(batchnorm_config.items()))
 
     layer = DenzuFold(**layer_config)

@@ -37,12 +37,16 @@ class FixedRangeQuantizer(quantizers.Quantizer):
     self.num_bits = num_bits
     self.num_int_bits = num_int_bits
     self.per_axis = per_axis
-    self.symmetric = symmetric
+    self.symmetric = symmetric  # unused
     self.narrow_range = narrow_range
 
   def build(self, tensor_shape, name, layer):
-    range_min = -(1 << self.num_bits) / 2
-    range_max = (1 << self.num_bits) / 2 - 1
+    quant_min = 1 if self.narrow_range else 0
+    quant_max = (1 << self.num_bits) - 1
+    zero_point = (quant_max - quant_min + 1) // 2
+    zero_point_from_min = quant_min + zero_point
+    range_min = quant_min - zero_point_from_min
+    range_max = quant_max - zero_point_from_min
     range_min /= (1 << (self.num_bits - self.num_int_bits))
     range_max /= (1 << (self.num_bits - self.num_int_bits))
     min_weight = layer.add_weight(
@@ -113,7 +117,7 @@ class DefaultDenseQuantizeConfig(quantize_config.QuantizeConfig):
 
   def get_weights_and_quantizers(self, layer):
     if layer.name == 'dense_final':
-      quantizer = FixedRangeQuantizer(num_bits=9, num_int_bits=3)
+      quantizer = FixedRangeQuantizer(num_bits=11, num_int_bits=3)
     else:
       quantizer = quantizers.LastValueQuantizer(
           num_bits=8, per_axis=False, symmetric=True, narrow_range=True)
@@ -121,7 +125,7 @@ class DefaultDenseQuantizeConfig(quantize_config.QuantizeConfig):
 
   def get_activations_and_quantizers(self, layer):
     if layer.name == 'dense_final':
-      quantizer = FixedRangeQuantizer(num_bits=9, num_int_bits=1)
+      quantizer = FixedRangeQuantizer(num_bits=11, num_int_bits=1)
     else:
       quantizer = quantizers.MovingAverageQuantizer(
           num_bits=8, per_axis=False, symmetric=False, narrow_range=False)
@@ -129,6 +133,7 @@ class DefaultDenseQuantizeConfig(quantize_config.QuantizeConfig):
 
   def set_quantize_weights(self, layer, quantize_weights):
     layer.kernel = quantize_weights[0]
+    layer.folded_kernel = quantize_weights[0]
 
   def set_quantize_activations(self, layer, quantize_activations):
     layer.activation = quantize_activations[0]
@@ -181,9 +186,9 @@ class DefaultOutputQuantizeConfig(quantize_config.QuantizeConfig):
 
   def get_output_quantizers(self, layer):
     if layer.name == 'preprocessing':
-      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=4)
+      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=4, narrow_range=True)
     elif layer.name == 'activation' or layer.name == 'activation_1' or layer.name == 'activation_2':
-      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=2)
+      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=1, narrow_range=True)
     else:
       quantizer = quantizers.MovingAverageQuantizer(
           num_bits=8, per_axis=False, symmetric=False, narrow_range=False)
@@ -222,11 +227,11 @@ class SuperDenseQuantizeConfig(DefaultDenseQuantizeConfig):
     weight = layer.kernel
     weight_name = layer.kernel.name.split(':')[0].split('/')[-1]
     if layer.name == 'dense':
-      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=4)
+      quantizer = FixedRangeQuantizer(num_bits=11, num_int_bits=4)
     elif layer.name == 'dense_1':
-      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=4)
+      quantizer = FixedRangeQuantizer(num_bits=11, num_int_bits=3)
     elif layer.name == 'dense_2':
-      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=4)
+      quantizer = FixedRangeQuantizer(num_bits=11, num_int_bits=3)
     else:
       quantizer = quantizers.LastValueQuantizer(
           num_bits=8, per_axis=False, symmetric=True, narrow_range=True)

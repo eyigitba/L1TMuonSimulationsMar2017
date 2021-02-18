@@ -142,6 +142,7 @@ class DenzuFold(Denzu):
     if getattr(self, '_quantize_weight_vars', None):
       (unquantized_weight, quantizer, quantizer_vars) = self._quantize_weight_vars[0]
       folded_kernel = self._apply_quantizer(quantizer, folded_kernel, training, quantizer_vars)
+      folded_bias = self._apply_quantizer(quantizer, folded_bias, training, quantizer_vars)
 
     # Swap the weights
     original_kernel = self.kernel
@@ -153,6 +154,8 @@ class DenzuFold(Denzu):
     outputs = super(DenzuFold, self).call(inputs, training=training, mask=mask)
 
     # Swap back the original weights
+    self.folded_kernel = self.kernel
+    self.folded_bias = self.bias
     self.kernel = original_kernel
     self.bias = original_bias
 

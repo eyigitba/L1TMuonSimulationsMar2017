@@ -42,7 +42,7 @@ class Tanhlu(Layer):
         nn.relu(x - constant_op.constant(1.5, dtype=x.dtype)) * constant_op.constant(-0.125, dtype=x.dtype),
         nn.relu(x - constant_op.constant(2.0, dtype=x.dtype)) * constant_op.constant(-0.0625, dtype=x.dtype),
         nn.relu(x - constant_op.constant(2.5, dtype=x.dtype)) * constant_op.constant(-0.03125, dtype=x.dtype),
-        nn.relu(x - constant_op.constant(3.0, dtype=x.dtype)) * constant_op.constant(-0.015625, dtype=x.dtype),
+        #nn.relu(x - constant_op.constant(3.0, dtype=x.dtype)) * constant_op.constant(-0.015625, dtype=x.dtype),
         #nn.relu(x - constant_op.constant(3.5, dtype=x.dtype)) * constant_op.constant(-0.0078125, dtype=x.dtype),
         #nn.relu(x - constant_op.constant(4.0, dtype=x.dtype)) * constant_op.constant(-0.00390625, dtype=x.dtype),
         nn.relu(-x - constant_op.constant(0.5, dtype=x.dtype)) * constant_op.constant(0.5, dtype=x.dtype),
@@ -50,7 +50,7 @@ class Tanhlu(Layer):
         nn.relu(-x - constant_op.constant(1.5, dtype=x.dtype)) * constant_op.constant(0.125, dtype=x.dtype),
         nn.relu(-x - constant_op.constant(2.0, dtype=x.dtype)) * constant_op.constant(0.0625, dtype=x.dtype),
         nn.relu(-x - constant_op.constant(2.5, dtype=x.dtype)) * constant_op.constant(0.03125, dtype=x.dtype),
-        nn.relu(-x - constant_op.constant(3.0, dtype=x.dtype)) * constant_op.constant(0.015625, dtype=x.dtype),
+        #nn.relu(-x - constant_op.constant(3.0, dtype=x.dtype)) * constant_op.constant(0.015625, dtype=x.dtype),
         #nn.relu(-x - constant_op.constant(3.5, dtype=x.dtype)) * constant_op.constant(0.0078125, dtype=x.dtype),
         #nn.relu(-x - constant_op.constant(4.0, dtype=x.dtype)) * constant_op.constant(0.00390625, dtype=x.dtype),
     ]

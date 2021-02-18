@@ -25,13 +25,16 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tensorflow_model_optimization.python.core.quantization.keras import quantize_aware_activation
 from tensorflow_model_optimization.python.core.quantization.keras import quantize_layout_transform
 from tensorflow_model_optimization.python.core.quantization.keras import quantize_registry
 from tensorflow_model_optimization.python.core.quantization.keras import quantize_scheme
+from tensorflow_model_optimization.python.core.quantization.keras import quantize_wrapper
+from tensorflow_model_optimization.python.core.quantization.keras import quantizers
 from tensorflow_model_optimization.python.core.quantization.keras.graph_transformations import model_transformer
 
 from k_quantization_quantize_configs import (
-    DefaultDenseQuantizeConfig, DefaultInputQuantizeConfig, DefaultOutputQuantizeConfig,
+    FixedRangeQuantizer, DefaultDenseQuantizeConfig, DefaultInputQuantizeConfig, DefaultOutputQuantizeConfig,
     NoOpQuantizeConfig, SuperDenseQuantizeConfig)
 from k_quantization_quantize_transforms import (
     QuantizeLayer, InputLayerQuantize, DenzuFolding, TanhjoReplace)
@@ -135,6 +138,26 @@ class DefaultQuantizeRegistry(quantize_registry.QuantizeRegistry):
 class DefaultQuantizeScheme(quantize_scheme.QuantizeScheme):
   """Quantization scheme which specifies how quantization should be applied."""
 
+  _QUANTIZATION_OBJECTS = {
+    'BatchNoru': BatchNoru,
+    'Denzu': Denzu,
+    'DenzuFold': DenzuFold,
+    'Normalisa': Normalisa,
+    'Tanhjo': Tanhjo,
+    'Tanhlu': Tanhlu,
+    'FixedRangeQuantizer': FixedRangeQuantizer,
+    'DefaultDenseQuantizeConfig': DefaultDenseQuantizeConfig,
+    'DefaultInputQuantizeConfig': DefaultInputQuantizeConfig,
+    'DefaultOutputQuantizeConfig': DefaultOutputQuantizeConfig,
+    'NoOpQuantizeConfig': NoOpQuantizeConfig,
+    'SuperDenseQuantizeConfig': SuperDenseQuantizeConfig,
+    'QuantizeAwareActivation': quantize_aware_activation.QuantizeAwareActivation,
+    'QuantizeWrapper': quantize_wrapper.QuantizeWrapper,
+    'AllValuesQuantizer': quantizers.AllValuesQuantizer,
+    'LastValueQuantizer': quantizers.LastValueQuantizer,
+    'MovingAverageQuantizer': quantizers.MovingAverageQuantizer,
+  }
+
   def get_layout_transformer(self):
     return DefaultQuantizeLayoutTransform()
 
@@ -152,17 +175,17 @@ def _test():
   model = tf.keras.Sequential()
   model.add(tf.keras.layers.InputLayer(input_shape=input_shape))
   model.add(Normalisa(axis=-1, name='preprocessing'))
-  model.add(Denzu(30, kernel_initializer='lecun_uniform', use_bias=False, activation=None, name='dense'))
+  model.add(Denzu(30, kernel_initializer='glorot_uniform', use_bias=False, activation=None, name='dense'))
   model.add(BatchNoru(momentum=0.99, epsilon=1e-4, name='batch_normalization'))
   model.add(Tanhjo(name='activation'))
-  model.add(Denzu(20, kernel_initializer='lecun_uniform', use_bias=False, activation=None, name='dense_1'))
+  model.add(Denzu(20, kernel_initializer='glorot_uniform', use_bias=False, activation=None, name='dense_1'))
   model.add(BatchNoru(momentum=0.99, epsilon=1e-4, name='batch_normalization_1'))
   model.add(Tanhjo(name='activation_1'))
-  model.add(Denzu(10, kernel_initializer='lecun_uniform', use_bias=False, activation=None, name='dense_2'))
+  model.add(Denzu(10, kernel_initializer='glorot_uniform', use_bias=False, activation=None, name='dense_2'))
   model.add(BatchNoru(momentum=0.99, epsilon=1e-4, name='batch_normalization_2'))
   model.add(Tanhjo(name='activation_2'))
   model.add(tf.keras.layers.Lambda(lambda x: x / 32, name='lambda_normalization'))
-  model.add(Denzu(1, kernel_initializer='zeros', use_bias=False, activation=None, name='dense_final'))
+  model.add(Denzu(1, kernel_initializer='glorot_uniform', use_bias=False, activation=None, name='dense_final'))
   model.summary()
 
   layout_transformer = DefaultQuantizeLayoutTransform()
