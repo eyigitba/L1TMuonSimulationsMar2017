@@ -38,7 +38,7 @@ def huber(y_true, y_pred, delta=1.345):
   y_true = math_ops.cast(y_true, y_pred.dtype)
   delta = constant_op.constant(delta, dtype=y_pred.dtype)
   half = constant_op.constant(0.5, dtype=y_pred.dtype)
-  abs_error = math_ops.abs(y_pred - y_true)
+  abs_error = math_ops.abs(math_ops.subtract(y_pred, y_true))
   squared_loss = half * math_ops.squared_difference(y_pred, y_true)
   absolute_loss = delta * abs_error - half * math_ops.square(delta)
   return K.mean(array_ops.where_v2(abs_error < delta, squared_loss, absolute_loss), axis=-1)

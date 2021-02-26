@@ -28,9 +28,25 @@ from tensorflow.python.framework import ops
 from tensorflow.python.keras import backend as K
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import math_ops
-from tensorflow.python.ops import nn_ops
+from tensorflow.python.ops import nn
 from tensorflow.python.keras.utils import losses_utils
 from tensorflow.python.keras.losses import LossFunctionWrapper
+
+def regularization_fn(y_true, y_pred):
+  """Add regularization loss.
+
+  Add penalty for 2-4 GeV muons with large pt.
+  """
+  factor = constant_op.constant(0.002, dtype=y_pred.dtype)  # max of the softplus term should be roughly 5
+  one_over_four = constant_op.constant(0.25, dtype=y_pred.dtype)
+  zeros = array_ops.zeros_like(y_pred, dtype=y_pred.dtype)
+  softplus_scale = constant_op.constant(10., dtype=y_pred.dtype)
+  softplus_offset = constant_op.constant(np.log(np.expm1(1.0)), dtype=y_pred.dtype)
+  softplus_arg = (array_ops.where_v2(y_true < zeros, y_pred, -y_pred) * softplus_scale) + softplus_offset
+  condition = math_ops.cast(math_ops.abs(y_true) >= one_over_four, y_pred.dtype)  # less than 4 GeV
+  #regularization = factor * math_ops.reduce_sum(nn.softplus(softplus_arg) * condition)
+  regularization = factor * math_ops.reduce_mean(nn.softplus(softplus_arg) * condition)
+  return regularization
 
 def log_cosh(y_true, y_pred):
   """Logarithm of the hyperbolic cosine of the prediction error.
@@ -42,10 +58,17 @@ def log_cosh(y_true, y_pred):
   double = constant_op.constant(2.0, dtype=y_pred.dtype)
   log_two = constant_op.constant(np.log(2.0), dtype=y_pred.dtype)
   zeros = array_ops.zeros_like(y_pred, dtype=y_pred.dtype)
-  error = y_pred - y_true
-  positive_branch = nn_ops.softplus(-double * error) + error - log_two
-  negative_branch = nn_ops.softplus(double * error) - error - log_two
-  return K.mean(array_ops.where_v2(error < zeros, negative_branch, positive_branch), axis=-1)
+  error = math_ops.subtract(y_pred, y_true)
+  positive_branch = nn.softplus(-double * error) + error - log_two
+  negative_branch = nn.softplus(double * error) - error - log_two
+
+  # Add regularization loss
+  use_regularization = True
+  regularization = constant_op.constant(0., dtype=y_pred.dtype)
+  if use_regularization:
+    regularization += regularization_fn(y_true, y_pred)
+
+  return K.mean(array_ops.where_v2(error < zeros, negative_branch, positive_branch), axis=-1) + regularization
 
 class LogCosh(LossFunctionWrapper):
   """Computes the logarithm of the hyperbolic cosine of the prediction error.
