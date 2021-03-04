@@ -125,7 +125,7 @@ class DefaultDenseQuantizeConfig(quantize_config.QuantizeConfig):
 
   def get_activations_and_quantizers(self, layer):
     if layer.name == 'dense_final':
-      quantizer = FixedRangeQuantizer(num_bits=11, num_int_bits=1)
+      quantizer = FixedRangeQuantizer(num_bits=14, num_int_bits=1)
     else:
       quantizer = quantizers.MovingAverageQuantizer(
           num_bits=8, per_axis=False, symmetric=False, narrow_range=False)
@@ -186,9 +186,9 @@ class DefaultOutputQuantizeConfig(quantize_config.QuantizeConfig):
 
   def get_output_quantizers(self, layer):
     if layer.name == 'preprocessing':
-      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=4, narrow_range=True)
+      quantizer = FixedRangeQuantizer(num_bits=14, num_int_bits=4, narrow_range=True)
     elif layer.name == 'activation' or layer.name == 'activation_1' or layer.name == 'activation_2':
-      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=1, narrow_range=True)
+      quantizer = FixedRangeQuantizer(num_bits=14, num_int_bits=1, narrow_range=True)
     else:
       quantizer = quantizers.MovingAverageQuantizer(
           num_bits=8, per_axis=False, symmetric=False, narrow_range=False)
@@ -229,7 +229,7 @@ class SuperDenseQuantizeConfig(DefaultDenseQuantizeConfig):
     if layer.name == 'dense':
       quantizer = FixedRangeQuantizer(num_bits=11, num_int_bits=4)
     elif layer.name == 'dense_1':
-      quantizer = FixedRangeQuantizer(num_bits=11, num_int_bits=3)
+      quantizer = FixedRangeQuantizer(num_bits=11, num_int_bits=4)
     elif layer.name == 'dense_2':
       quantizer = FixedRangeQuantizer(num_bits=11, num_int_bits=3)
     else:
@@ -243,11 +243,11 @@ class SuperDenseQuantizeConfig(DefaultDenseQuantizeConfig):
     activation = layer.activation
     activation_name = 'post_activation'
     if layer.name == 'dense':
-      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=4)
+      quantizer = FixedRangeQuantizer(num_bits=14, num_int_bits=4)
     elif layer.name == 'dense_1':
-      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=4)
+      quantizer = FixedRangeQuantizer(num_bits=14, num_int_bits=4)
     elif layer.name == 'dense_2':
-      quantizer = FixedRangeQuantizer(num_bits=12, num_int_bits=4)
+      quantizer = FixedRangeQuantizer(num_bits=14, num_int_bits=4)
     else:
       quantizer = quantizers.MovingAverageQuantizer(
           num_bits=8, per_axis=False, symmetric=False, narrow_range=False)
