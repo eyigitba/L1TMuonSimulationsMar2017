@@ -10,7 +10,7 @@ from emtf_utils import *
 
 
 # ______________________________________________________________________________
-# Constants
+# Configs
 
 # 2 endcaps, 6 sectors per endcap. 3 zones and 3 timezones per sector.
 num_emtf_sectors = 12
@@ -31,6 +31,7 @@ num_emtf_hosts = 19
 num_emtf_tracks = 4
 num_emtf_patterns = 7
 num_emtf_features = 36 + 4
+num_emtf_features_addl = 4
 
 # Eta boundaries used to define the zones
 emtf_eta_bins = (0.8, 1.2, 1.55, 1.98, 2.4)
@@ -38,9 +39,14 @@ emtf_eta_bins = (0.8, 1.2, 1.55, 1.98, 2.4)
 # Full range of emtf_phi is assumed to be 0..5040 (0..84 deg).
 # 84 deg from 60 (native) + 20 (neighbor) + 2 (tolerance, left) + 2 (tolerance, right).
 coarse_emtf_strip = 8 * 2  # 'doublestrip' unit
-num_coarse_emtf_strips = 288  # num of doublestrip units to allocate
-min_emtf_strip = (315 - num_coarse_emtf_strips) * coarse_emtf_strip  # 7.2 deg
+min_emtf_strip = (315 - 288) * coarse_emtf_strip  # 7.2 deg
 max_emtf_strip = (315 - 0) * coarse_emtf_strip  # 84 deg
+
+# Firmware params
+fw_ph_diff_bitwidth = 11
+fw_th_diff_bitwidth = 6
+fw_th_window = 8
+fw_th_invalid = 0
 
 # ______________________________________________________________________________
 # Functions
@@ -202,7 +208,7 @@ def hack_me0_hit_chamber(hit):
   return
 
 # Encode EMTF chamber number
-# Total: 112 (6*9*2 + 4)
+# Total: 115 (6*9*2 + 7)
 def find_emtf_chamber_initializer():
   default_value = -99
   lut = np.full((5,5,10,4), default_value, dtype=np.int32)  # (type, station, cscid, subsector) -> chamber
@@ -322,6 +328,7 @@ def find_emtf_chamber_initializer():
   lut[4,1,1,2] = 111 # ME0 sub 2
   lut[4,1,2,2] = 112 # ME0 sub 2
   lut[4,1,3,2] = 113 # ME0 sub 2
+  lut[4,1,1,3] = 114 # ME0 neigh
   lut[4,1,2,3] = 114 # ME0 neigh
   lut[4,1,3,3] = 114 # ME0 neigh
 
@@ -356,6 +363,12 @@ chamber_to_host_lut = np.array([
    9,10,11,12,13,14,15,16,17,  # neigh
   #
   18,18,18,18,18,18,18,        # ME0
+], dtype=np.int32)
+
+# Ignore ME1/3 and RE1/3
+ignored_chambers = np.array([
+   6,  7,  8, 15, 16, 17, 47,  # ME1/3
+  60, 61, 62, 69, 70, 71,101,  # RE1/3
 ], dtype=np.int32)
 
 # Assign EMTF zones
@@ -531,17 +544,25 @@ def find_emtf_img_row_initializer():
 # The initializer will instantiate the lookup table
 find_emtf_img_row = find_emtf_img_row_initializer()
 
-img_row_labels = np.array([
-  ['ME0'  , 'GE1/1', 'ME1/1', 'GE2/1', 'ME2/1', 'ME3/1', 'RE3/1', 'ME4/1'],
-  ['GE1/1', 'ME1/1', 'ME1/2', 'GE2/1', 'ME2/1', 'ME3/1', 'RE3/1', 'ME4/1'],
-  ['ME1/2', 'RE1/2', 'RE2/2', 'ME2/2', 'ME3/2', 'RE3/2', 'ME4/2', 'RE4/2'],
-], dtype=np.object)
-
 site_to_img_row_luts = np.array([
   [2, 2, 4, 5, 7, 2, 4, 6, 7, 1, 3, 0],
   [1, 2, 4, 5, 7, 2, 4, 6, 7, 0, 3, 0],
   [0, 0, 3, 4, 6, 1, 2, 5, 7, 0, 3, 0],
 ], dtype=np.int32)
+
+site_rm_to_many_sites_lut = np.array([
+  [  0,   9,   1,   5],  # ME1/1, GE1/1, ME1/2, RE1/2
+  [  2,  10,   6, -99],  # ME2, GE2/1, RE2/2
+  [  3,   7, -99, -99],  # ME3, RE3
+  [  4,   8, -99, -99],  # ME4, RE4
+  [ 11, -99, -99, -99],  # ME0
+], dtype=np.int32)
+
+img_row_labels = np.array([
+  ['ME0'  , 'GE1/1', 'ME1/1', 'GE2/1', 'ME2/1', 'ME3/1', 'RE3/1', 'ME4/1'],
+  ['GE1/1', 'ME1/1', 'ME1/2', 'GE2/1', 'ME2/1', 'ME3/1', 'RE3/1', 'ME4/1'],
+  ['ME1/2', 'RE1/2', 'RE2/2', 'ME2/2', 'ME3/2', 'RE3/2', 'ME4/2', 'RE4/2'],
+], dtype=np.object)
 
 def find_emtf_img_col(emtf_phi):
   emtf_phi = np.asarray(emtf_phi)

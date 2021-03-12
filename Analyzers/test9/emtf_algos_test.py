@@ -241,9 +241,6 @@ def test_find_emtf_img_col():
   emtf_phi = min_emtf_strip + coarse_emtf_strip
   assert find_emtf_img_col(emtf_phi) == 1
 
-  emtf_phi = max_emtf_strip - 1
-  assert find_emtf_img_col(emtf_phi) == (num_coarse_emtf_strips - 1)
-
   emtf_phi = 3600
   assert find_emtf_img_col_inverse(find_emtf_img_col(emtf_phi)) == emtf_phi + (coarse_emtf_strip // 2)
 
@@ -470,3 +467,11 @@ def test_chamber_to_host_lut():
     [84, 84, 84, 84, 84, 84, 84],
   ]
   assert to_list(img_row_to_zone_bounds_lut_1) == img_row_to_zone_bounds_lut_1_answer
+
+def test_array_shapes():
+  assert host_to_site_lut.shape[0] == num_emtf_hosts
+  assert chamber_to_host_lut.shape[0] == num_emtf_chambers
+  assert site_to_img_row_luts.shape[0] == num_emtf_zones
+  assert site_to_img_row_luts.shape[1] == num_emtf_sites
+  assert site_rm_to_many_sites_lut.shape[0] == num_emtf_sites_rm
+  assert img_row_labels.shape[0] == num_emtf_zones
