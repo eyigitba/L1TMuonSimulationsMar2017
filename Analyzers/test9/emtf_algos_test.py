@@ -470,3 +470,11 @@ def test_chamber_to_host_lut():
     [84, 84, 84, 84, 84, 84, 84],
   ]
   assert to_list(img_row_to_zone_bounds_lut_1) == img_row_to_zone_bounds_lut_1_answer
+
+def test_array_shapes():
+  assert host_to_site_lut.shape[0] == num_emtf_hosts
+  assert chamber_to_host_lut.shape[0] == num_emtf_chambers
+  assert site_to_img_row_luts.shape[0] == num_emtf_zones
+  assert site_to_img_row_luts.shape[1] == num_emtf_sites
+  assert site_rm_indices.shape[0] == num_emtf_sites_rm
+  assert img_row_labels.shape[0] == num_emtf_zones

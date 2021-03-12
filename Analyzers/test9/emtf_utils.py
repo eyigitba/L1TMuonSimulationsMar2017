@@ -13,9 +13,38 @@ from six.moves import range, zip, map, filter
 # ______________________________________________________________________________
 # Enums
 
+# Trigger primitives
 kDT, kCSC, kRPC, kGEM, kME0 = 0, 1, 2, 3, 4
 
+# Logging levels
 kDEBUG, kINFO, kWARNING, kERROR, kFATAL = 0, 1, 2, 3, 4
+
+# ______________________________________________________________________________
+# Configs
+
+# The default float type (as defined in tf.keras)
+_FLOATX = 'float32'
+
+# The fuzz factor used in numeric expressions (as defined in tf.keras)
+_EPSILON = 1e-7
+
+# The default image data format convention (as defined in tf.keras)
+_IMAGE_DATA_FORMAT = 'channels_last'
+
+# The default fill_value for int type (as defined in numpy.ma)
+_MA_FILL_VALUE = 999999
+
+def floatx():
+  return _FLOATX
+
+def epsilon():
+  return _EPSILON
+
+def image_data_format():
+  return _IMAGE_DATA_FORMAT
+
+def ma_fill_value():
+  return _MA_FILL_VALUE
 
 # ______________________________________________________________________________
 # Functions
@@ -118,6 +147,26 @@ def calc_eta_from_theta_deg(theta_deg, endcap):
   if endcap == -1:
     eta = -eta
   return eta
+
+def calc_ns_from_mhz(mhz):
+  return 1e3 / mhz
+
+def calc_mhz_from_ns(ns):
+  return 1e3 / ns
+
+def calc_quant_scale(num_bits, num_int_bits):
+  return 1.0 / (1 << (num_bits - num_int_bits))
+
+def calc_quant_range(num_bits, num_int_bits, narrow_range=False):
+  quant_min = 1 if narrow_range else 0
+  quant_max = (1 << num_bits) - 1
+  zero_point = (quant_max - quant_min + 1) // 2
+  zero_point_from_min = quant_min + zero_point
+  range_min = quant_min - zero_point_from_min
+  range_max = quant_max - zero_point_from_min
+  range_min /= (1 << (num_bits - num_int_bits))
+  range_max /= (1 << (num_bits - num_int_bits))
+  return (range_min, range_max)
 
 def get_trigger_sector(ring, station, chamber):
   result = np.uint32(0)
