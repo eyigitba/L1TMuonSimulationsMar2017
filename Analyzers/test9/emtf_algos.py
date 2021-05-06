@@ -161,8 +161,13 @@ def decode_emtf_host_initializer():
 # The initializer will instantiate the lookup tables
 decode_emtf_host = decode_emtf_host_initializer()
 
+# ME1/1, ME1/2, ME1/3, ME2/1, ME2/2, ME3/1, ME3/2, ME4/1, ME4/2
+# GE1/1, RE1/2, RE1/3, GE2/1, RE2/2, RE3/1, RE3/2, RE4/1, RE4/2
+# ME0
 host_to_site_lut = np.array([
-  0, 1, 1, 2, 2, 3, 3, 4, 4, 9, 5, 5, 10, 6, 7, 7, 8, 8, 11
+   0,  1,  1,  2,  2,  3,  3,  4,  4,
+   9,  5,  5, 10,  6,  7,  7,  8,  8,
+  11,
 ], dtype=np.int32)
 
 # Hack ME0 chamber number
@@ -170,25 +175,25 @@ host_to_site_lut = np.array([
 def hack_me0_hit_chamber(hit):
   if hit.type == kME0:
     old_chamber = hit.chamber
-    new_chamber = (old_chamber - 1) * 2 + 2
+    new_chamber = (old_chamber - 1) * 2 + 1
     if hit.endcap == 1:  # positive endcap
       try:
         if hit.strip <= 191:  # first 5 deg (1/4 of chamber)
+          new_chamber += 1
+        elif 191 < hit.strip <= (767 - 192):  # next 10 deg (1/2 of chamber)
           pass
-        elif 191 < hit.strip < (767 - 192):  # next 10 deg (1/2 of chamber)
+        elif hit.strip > (767 - 192):  # last 5 deg (1/4 of chamber)
           new_chamber -= 1
-        elif hit.strip >= (767 - 192):  # last 5 deg (1/4 of chamber)
-          new_chamber -= 2
       except:
         pass
     else:  # negative endcap
       try:
-        if hit.strip >= (767 - 192):  # first 5 deg (1/4 of chamber)
+        if hit.strip > (767 - 192):  # first 5 deg (1/4 of chamber)
+          new_chamber += 1
+        elif 191 < hit.strip <= (767 - 192):  # next 10 deg (1/2 of chamber)
           pass
-        elif 191 < hit.strip < (767 - 192):  # next 10 deg (1/2 of chamber)
-          new_chamber -= 1
         elif hit.strip <= 191:  # last 5 deg (1/4 of chamber)
-          new_chamber -= 2
+          new_chamber -= 1
       except:
         pass
     if new_chamber == 0:
