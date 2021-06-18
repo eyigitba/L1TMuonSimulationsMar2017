@@ -1,8 +1,0 @@
-<export>
-</export>
-<library name="L1TMuonSimulationsMuonTools_plugins" file="*.cc">
-  <use name="L1TMuonSimulations/MuonTools"/>
-  <use name="CommonTools/UtilAlgos"/>
-  <use name="DataFormats/GEMDigi"/>
-  <use name="Geometry/GEMGeometry"/>
-</library>

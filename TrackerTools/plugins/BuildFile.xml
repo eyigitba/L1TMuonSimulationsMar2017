@@ -1,5 +1,0 @@
-<export>
-</export>
-<library name="L1TMuonSimulationsTrackerTools_plugins" file="*.cc">
-  <use name="L1TMuonSimulations/TrackerTools"/>
-</library>

@@ -105,8 +105,10 @@ HepMC::FourVector FlatEvtVtxGenerator2::newVertexFlatD0(CLHEP::HepRandomEngine* 
 
   //aZ = CLHEP::RandFlat::shoot(engine, fMinZ, fMaxZ);
   //aT = CLHEP::RandFlat::shoot(engine, fMinT, fMaxT);
-  double fSigmaZ = 5.0 * cm;  // use gaussian for vz
+  double fSigmaZ = 25.0 * cm;  // use gaussian for vz
+  // aZ = CLHEP::RandFlat::shoot(engine, fMinZ, fMaxZ);
   aZ = CLHEP::RandGaussQ::shoot(engine, 0., fSigmaZ);
+  // aT = CLHEP::RandFlat::shoot(engine, fMinZ, fMaxZ);
   aT = CLHEP::RandGaussQ::shoot(engine, 0., fSigmaZ);
 
   return HepMC::FourVector(aX,aY,aZ,aT);

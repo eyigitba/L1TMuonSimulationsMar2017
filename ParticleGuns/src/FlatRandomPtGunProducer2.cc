@@ -133,9 +133,9 @@ void FlatRandomPtGunProducer2::produce(Event &e, const EventSetup& es)
       PData = fPDGTable->particle(HepPDT::ParticleID(PartID)) ;
     double mass   = PData->mass().value() ;
     double phi    = CLHEP::RandFlat::shoot(engine, fMinPhi, fMaxPhi) ;
-           phi    = get_phi0_from_phiStar(phi, PData->charge()/pt, fRStarForPhi);
+           // phi    = get_phi0_from_phiStar(phi, PData->charge()/pt, fRStarForPhi);
     double eta    = CLHEP::RandFlat::shoot(engine, fMinEta, fMaxEta) ;
-           eta    = get_eta0_from_etaStar(eta, vz, PData->charge()/pt, fRStarForEta);
+           // eta    = get_eta0_from_etaStar(eta, vz, PData->charge()/pt, fRStarForEta);
     double theta  = 2.*atan(exp(-eta)) ;
     double mom    = pt/sin(theta) ;
     double px     = pt*cos(phi) ;
