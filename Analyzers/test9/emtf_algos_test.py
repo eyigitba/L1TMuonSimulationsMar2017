@@ -192,24 +192,24 @@ def test_find_emtf_timezones():
     emtf_host, bx = 99, -1
     find_emtf_zones(emtf_host, bx)
 
-  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
-  bx = np.array([-1]*9)
-  answer = np.array([6]*9)
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8,9,12])
+  bx = np.array([-1]*11)
+  answer = np.array([6]*11)
   assert (find_emtf_timezones(emtf_host, bx) == answer).all()
 
-  emtf_host = np.array([9,10,11,12,13,14,15,16,17,18])
-  bx = np.array([-1]*10)
-  answer = np.array([2]*10)
+  emtf_host = np.array([10,11,13,14,15,16,17,18])
+  bx = np.array([-1]*8)
+  answer = np.array([2]*8)
   assert (find_emtf_timezones(emtf_host, bx) == answer).all()
 
-  emtf_host = np.array([0,1,2,3,4,5,6,7,8])
-  bx = np.array([0]*9)
-  answer = np.array([4]*9)
+  emtf_host = np.array([0,1,2,3,4,5,6,7,8,9,12])
+  bx = np.array([0]*11)
+  answer = np.array([4]*11)
   assert (find_emtf_timezones(emtf_host, bx) == answer).all()
 
-  emtf_host = np.array([9,10,11,12,13,14,15,16,17,18])
-  bx = np.array([0]*10)
-  answer = np.array([4]*10)
+  emtf_host = np.array([10,11,13,14,15,16,17,18])
+  bx = np.array([0]*8)
+  answer = np.array([4]*8)
   assert (find_emtf_timezones(emtf_host, bx) == answer).all()
 
 def test_find_emtf_img_row():

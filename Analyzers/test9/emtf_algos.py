@@ -19,7 +19,8 @@ num_emtf_timezones = 3
 
 # chambers: 54 (CSC) + 43 (RPC) + 11 (GEM) + 4 (ME0)
 # segments: 2 (CSC), 2 (RPC), 8 (GEM), 4 (iRPC), 20 (ME0) - using CSC as default
-# variables: 13 (emtf_phi, emtf_bend, emtf_theta1, emtf_theta2, emtf_qual1, emtf_qual2, emtf_time, zones, timezones, fr, dl, bx, valid)
+# variables: 13 (emtf_phi, emtf_bend, emtf_theta1, emtf_theta2, emtf_qual1, emtf_qual2,
+#                emtf_time, zones, timezones, cscfr, gemdl, bx, valid)
 num_emtf_chambers = 115
 num_emtf_segments = 2
 num_emtf_variables = 13
@@ -442,25 +443,25 @@ find_emtf_zones = find_emtf_zones_initializer()
 def find_emtf_timezones_lut():
   default_value = -99
   lut = np.full((num_emtf_hosts, num_emtf_timezones, 2), default_value, dtype=np.int32)  # (host,timezone) -> (min_bx,max_bx)
-  lut[0,0] = -1,0  # ME1/1
-  lut[1,0] = -1,0  # ME1/2
-  lut[2,0] = -1,0  # ME1/3
-  lut[3,0] = -1,0  # ME2/1
-  lut[4,0] = -1,0  # ME2/2
-  lut[5,0] = -1,0  # ME3/1
-  lut[6,0] = -1,0  # ME3/2
-  lut[7,0] = -1,0  # ME4/1
-  lut[8,0] = -1,0  # ME4/2
-  lut[9,0] = 0,0   # GE1/1
-  lut[10,0] = 0,0  # RE1/2
-  lut[11,0] = 0,0  # RE1/3
-  lut[12,0] = 0,0  # GE2/1
-  lut[13,0] = 0,0  # RE2/2
-  lut[14,0] = 0,0  # RE3/1
-  lut[15,0] = 0,0  # RE3/2
-  lut[16,0] = 0,0  # RE4/1
-  lut[17,0] = 0,0  # RE4/2
-  lut[18,0] = 0,0  # ME0
+  lut[0,0] = -1,0   # ME1/1
+  lut[1,0] = -1,0   # ME1/2
+  lut[2,0] = -1,0   # ME1/3
+  lut[3,0] = -1,0   # ME2/1
+  lut[4,0] = -1,0   # ME2/2
+  lut[5,0] = -1,0   # ME3/1
+  lut[6,0] = -1,0   # ME3/2
+  lut[7,0] = -1,0   # ME4/1
+  lut[8,0] = -1,0   # ME4/2
+  lut[9,0] = -1,0   # GE1/1
+  lut[10,0] = 0,0   # RE1/2
+  lut[11,0] = 0,0   # RE1/3
+  lut[12,0] = -1,0  # GE2/1
+  lut[13,0] = 0,0   # RE2/2
+  lut[14,0] = 0,0   # RE3/1
+  lut[15,0] = 0,0   # RE3/2
+  lut[16,0] = 0,0   # RE4/1
+  lut[17,0] = 0,0   # RE4/2
+  lut[18,0] = 0,0   # ME0
   #
   lut[:, 1] = lut[:, 0] - 1  # timezone 1 = timezone 0 - 1
   lut[:, 2] = lut[:, 1] - 1  # timezone 2 = timezone 1 - 1
