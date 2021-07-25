@@ -66,7 +66,7 @@ use_condor = ('CONDOR_EXEC' in os.environ)
 if use_condor:
   nargs = 3
   if len(sys.argv) != (nargs + 1):
-    raise RuntimeError('Expect num of arguments: {0}'.format(nargs))
+    raise RuntimeError('Expect num of arguments: {}'.format(nargs))
   os.environ['ROOTPY_GRIDMODE'] = 'true'
   algo = sys.argv[1]
   analysis = sys.argv[2]
@@ -79,18 +79,18 @@ def app_decorator(fn):
   def wrapper(*args, **kwargs):
     # Begin
     start_time = datetime.datetime.now()
-    print('[INFO] Current time    : {0}'.format(start_time))
-    print('[INFO] Using cmssw     : {0}'.format(os.environ['CMSSW_VERSION']))
-    print('[INFO] Using condor    : {0}'.format(use_condor))
-    print('[INFO] Using algo      : {0}'.format(algo))
-    print('[INFO] Using analysis  : {0}'.format(analysis))
-    print('[INFO] Using jobid     : {0}'.format(jobid))
-    print('[INFO] Using maxevents : {0}'.format(maxevents))
+    print('[INFO] Current time    : {}'.format(start_time))
+    print('[INFO] Using cmssw     : {}'.format(os.environ['CMSSW_VERSION']))
+    print('[INFO] Using condor    : {}'.format(use_condor))
+    print('[INFO] Using algo      : {}'.format(algo))
+    print('[INFO] Using analysis  : {}'.format(analysis))
+    print('[INFO] Using jobid     : {}'.format(jobid))
+    print('[INFO] Using maxevents : {}'.format(maxevents))
     # Run
     fn(*args, **kwargs)
     # End
     stop_time = datetime.datetime.now()
-    print('[INFO] Elapsed time    : {0}'.format(stop_time - start_time))
+    print('[INFO] Elapsed time    : {}'.format(stop_time - start_time))
     return
   return wrapper
 
@@ -128,7 +128,7 @@ def app():
     myargs = dict(algo=algo, pileup=300)
 
   else:
-    raise RuntimeError('Cannot recognize analysis: {0}'.format(analysis))
+    raise RuntimeError('Cannot recognize analysis: {}'.format(analysis))
 
   # Run analysis
   myapp.run(**myargs)
