@@ -58,7 +58,11 @@ scram b -j 10
 
 ## Version
 
-- **v3.3.0** (2019-11-12): Include CNN studies under subdirectory `test9`.
+- **v3.4.0** (2021-07-26): Revamp `test9` and add `test10` with NN training notebooks.
+
+- **v3.3.0** (2020-03-04): Include CNN studies under subdirectory `test9`.
+
+- **v3.2.1** (2019-11-12): Clean up + additional studies after L1T Phase-2 TDR.
 
 - **v3.2.0** (2019-10-22): Version used to make the L1T Phase-2 TDR plots for EMTF++.
 
