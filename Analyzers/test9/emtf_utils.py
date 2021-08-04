@@ -57,7 +57,7 @@ def ma_fill_value():
 
 def wrap_phi_rad(x):
   # returns phi in [-pi,pi] rad
-  twopi = np.pi*2
+  twopi = np.pi * 2
   x = x - np.round(x / twopi) * twopi
   return x
 
@@ -69,7 +69,7 @@ def wrap_phi_deg(x):
 
 def wrap_theta_rad(x):
   # returns theta in [0,pi/2] rad
-  halfpi = np.pi/2
+  halfpi = np.pi / 2
   x = wrap_phi_rad(x)
   x = np.abs(x)
   x = np.where(x >= halfpi, np.pi - x, x)
@@ -83,14 +83,12 @@ def wrap_theta_deg(x):
   x = np.where(x >= halfpi, 180. - x, x)
   return x
 
-def delta_phi(lhs, rhs):
-  # lhs, rhs in radians
+def delta_phi_rad(lhs, rhs):
   x = wrap_phi_rad(lhs - rhs)
   return x
 
-def delta_theta(lhs, rhs):
-  # lhs, rhs in radians
-  x = lhs - rhs
+def delta_phi_deg(lhs, rhs):
+  x = wrap_phi_deg(lhs - rhs)
   return x
 
 def calc_phi_loc_deg_from_glob(glob, sector):
@@ -174,6 +172,13 @@ def calc_quant_range(num_bits, num_int_bits, narrow_range=False):
   range_max /= (1 << (num_bits - num_int_bits))
   return (range_min, range_max)
 
+def get_trigger_endsec(endcap, sector):
+  # endsec is 0-5 in positive endcap, 6-11 in negative endcap
+  assert(endcap == 1 or endcap == -1)
+  assert(1 <= sector <= 6)
+  result = (sector - 1) if endcap == 1 else (sector - 1 + 6)
+  return result
+
 def get_trigger_sector(ring, station, chamber):
   result = np.uint32(0)
   if station > 1 and ring > 1:
@@ -214,6 +219,17 @@ def get_trigger_cscid(ring, station, chamber):
       result = np.uint32(chamber + 3) % 6 + 4  # 4,5,6,7,8,9
   return result
 
+def get_trigger_cscfr(ring, station, chamber):
+  result = np.uint32(0)
+  is_overlapping = not (station == 1 and ring == 3)
+  is_even = (chamber % 2 == 0)
+  if is_overlapping:
+    if station < 3:
+      result = result + is_even
+    else:
+      result = result + (not is_even)
+  return result
+
 def get_trigger_neighid(ring, station, chamber):
   # neighid is 0 for native chamber, 1 for neighbor chamber
   result = np.uint32(0)
@@ -229,12 +245,11 @@ def get_trigger_neighid(ring, station, chamber):
         result = result + 1
   return result
 
-def get_trigger_endsec(endcap, sector):
-  # endsec is 0-5 in positive endcap, 6-11 in negative endcap
-  assert(endcap == 1 or endcap == -1)
-  assert(1 <= sector <= 6)
-  result = (sector - 1) if endcap == 1 else (sector - 1 + 6)
-  return result
+def get_trigger_cscneighid(station, subsector, cscid, neighid):
+  if neighid == 0:
+    return (((subsector - 1) if (station == 1) else 0) * 9) + (cscid - 1);
+  else:
+    return (((cscid - 1) // 3) + 18) if (station == 1) else (((cscid - 1) >= 3) + 9);
 
 def calc_d0_simple(phi, xv, yv):
   d0 = xv * np.sin(phi) - yv * np.cos(phi)

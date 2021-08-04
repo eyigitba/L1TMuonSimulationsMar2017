@@ -9,27 +9,33 @@ import numpy as np
 import six
 from six.moves import range, zip, map, filter
 
+
 # ______________________________________________________________________________
-# Ntuples
+# Configs
+
+# Parent directory
+eos_prefix = 'root://cmsxrootd-site.fnal.gov//store/group/l1upgrades/L1MuonTrigger/P2_10_6_3/'
+
+# ______________________________________________________________________________
+# Functions
 
 def load_tree(infiles):
   from rootpy.tree import TreeChain
   from rootpy.ROOT import gROOT
   gROOT.SetBatch(True)
 
-  if isinstance(infiles, list) and len(infiles) > 10:
-    infiles_trunc = infiles[:5] + ['...'] + infiles[-5:]
-  else:
-    infiles_trunc = infiles
-  print('[INFO] Opening files: {0}'.format(infiles_trunc))
+  def truncate_list(lst):
+    if isinstance(lst, list) and len(lst) > 10:
+      return lst[:5] + ['...'] + lst[-5:]
+    else:
+      return lst
+  print('[INFO] Opening files: {0}'.format(truncate_list(infiles)))
   tree = TreeChain('ntupler/tree', infiles)
   tree.define_collection(name='hits', prefix='vh_', size='vh_size')
   tree.define_collection(name='simhits', prefix='vc_', size='vc_size')
   tree.define_collection(name='tracks', prefix='vt_', size='vt_size')
   tree.define_collection(name='particles', prefix='vp_', size='vp_size')
   return tree
-
-eos_prefix = 'root://cmsxrootd-site.fnal.gov//store/group/l1upgrades/L1MuonTrigger/P2_10_6_3/'
 
 def load_pgun_test():
   #infile = '../test7/ntuple_SingleMuon_Endcap_2GeV_add.6.root'
